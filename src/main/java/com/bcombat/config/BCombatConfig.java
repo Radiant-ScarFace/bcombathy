@@ -233,6 +233,8 @@ public final class BCombatConfig {
         CombatConstants.SQUAD_FRIENDLY_FIRE_CONE_COS = d.squadFriendlyFireConeCos;
         CombatConstants.SQUAD_MOUNTED_CHARGE_DANGER_RADIUS = d.squadMountedChargeDangerRadius;
         CombatConstants.AI_REACTION_JITTER_TICKS = d.aiReactionJitterTicks;
+
+        CombatConstants.DIRECTIONAL_INDICATOR_ALWAYS_VISIBLE = d.directionalIndicatorAlwaysVisible;
     }
 
     private static BCombatConfigData captureFromConstants() {
@@ -332,6 +334,8 @@ public final class BCombatConfig {
         d.squadFriendlyFireConeCos = CombatConstants.SQUAD_FRIENDLY_FIRE_CONE_COS;
         d.squadMountedChargeDangerRadius = CombatConstants.SQUAD_MOUNTED_CHARGE_DANGER_RADIUS;
         d.aiReactionJitterTicks = CombatConstants.AI_REACTION_JITTER_TICKS;
+
+        d.directionalIndicatorAlwaysVisible = CombatConstants.DIRECTIONAL_INDICATOR_ALWAYS_VISIBLE;
 
         return d;
     }

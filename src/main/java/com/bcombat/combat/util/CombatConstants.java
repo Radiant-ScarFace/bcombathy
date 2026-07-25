@@ -710,4 +710,17 @@ public final class CombatConstants {
      * not affect solo (non-squad) AI decision timing.
      */
     public static int AI_REACTION_JITTER_TICKS = 4;
+
+    // ---------------- Directional combat indicator (HUD) ----------------
+
+    /**
+     * When {@code false} (the default), the directional combat indicator
+     * only fades in while the local player's {@code CombatState} is
+     * combat-active (see {@code CombatState#isCombatActive()}) and fades
+     * back out the instant Combat Mode is exited. When {@code true}, it
+     * stays visible at all times (still fading out only while the HUD
+     * itself is hidden), for players/packs that want the indicator as a
+     * permanent HUD element rather than a combat-only affordance.
+     */
+    public static boolean DIRECTIONAL_INDICATOR_ALWAYS_VISIBLE = false;
 }

@@ -21,9 +21,11 @@ import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
 import net.minecraft.command.argument.EntityArgumentType;
 import net.minecraft.command.CommandSource;
 import net.minecraft.entity.Entity;
+import net.minecraft.entity.LivingEntity;
 import net.minecraft.entity.mob.MobEntity;
 import net.minecraft.server.command.CommandManager;
 import net.minecraft.server.command.ServerCommandSource;
+import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.text.Text;
 
 import java.util.Arrays;
@@ -117,6 +119,18 @@ public final class BCombatCommand {
                         .executes(BCombatCommand::debugStatus)
                         .then(CommandManager.argument("enabled", BoolArgumentType.bool())
                                 .executes(BCombatCommand::debugSet)))
+                .then(CommandManager.literal("combat")
+                        .executes(ctx -> combatStatus(ctx, null))
+                        .then(CommandManager.argument("target", EntityArgumentType.entity())
+                                .executes(ctx -> combatStatus(ctx, EntityArgumentType.getEntity(ctx, "target")))))
+                .then(CommandManager.literal("stamina")
+                        .executes(ctx -> staminaStatus(ctx, null))
+                        .then(CommandManager.argument("target", EntityArgumentType.entity())
+                                .executes(ctx -> staminaStatus(ctx, EntityArgumentType.getEntity(ctx, "target")))))
+                .then(CommandManager.literal("direction")
+                        .executes(ctx -> directionStatus(ctx, null))
+                        .then(CommandManager.argument("target", EntityArgumentType.entity())
+                                .executes(ctx -> directionStatus(ctx, EntityArgumentType.getEntity(ctx, "target")))))
                 .then(CommandManager.literal("config")
                         .then(CommandManager.literal("reload")
                                 .executes(BCombatCommand::configReload))
@@ -143,6 +157,111 @@ public final class BCombatCommand {
         ctx.getSource().sendFeedback(
                 () -> feedback("Debug logging " + (enabled ? "enabled" : "disabled")), true);
         return 1;
+    }
+
+    // ------------------------------------------------------------------
+    // combat / stamina / direction
+    // ------------------------------------------------------------------
+
+    /**
+     * {@code /bcombat combat [target]} — reports the {@link CombatController}
+     * combat-state snapshot (state, movement mode, mounted status,
+     * equipped weapon) for the executing player or an explicit target,
+     * reading the exact same public API {@code CombatInputHandler} and
+     * {@code AICombatController} already drive.
+     */
+    private static int combatStatus(CommandContext<ServerCommandSource> ctx, Entity explicitTarget) throws CommandSyntaxException {
+        LivingEntity subject = resolveSubject(ctx, explicitTarget);
+        if (subject == null) {
+            ctx.getSource().sendError(feedback("No player to inspect - run as a player or supply a target."));
+            return 0;
+        }
+        CombatController controller = CombatControllerManager.getIfPresent(subject);
+        if (controller == null) {
+            ctx.getSource().sendFeedback(() -> feedback(subject.getName().getString() + " has no active CombatController."), false);
+            return 0;
+        }
+
+        String weapon = controller.getEquippedWeaponItem() != null
+                ? controller.getEquippedWeaponItem().getTranslationKey()
+                : "none";
+        ctx.getSource().sendFeedback(() -> feedback(subject.getName().getString()
+                + " | state=" + controller.getCombatState().name()
+                + " | movement=" + controller.getMovementMode().name()
+                + " | mounted=" + controller.isMounted()
+                + " | weapon=" + weapon
+                + " | authoritative=" + controller.isAuthoritative()), false);
+        return 1;
+    }
+
+    /**
+     * {@code /bcombat stamina [target]} — reports the {@link
+     * CombatController} stamina snapshot (current/max/ratio/exhaustion)
+     * for the executing player or an explicit target, reading the exact
+     * same read-only accessors {@code AICombatController} already uses
+     * to make retreat decisions.
+     */
+    private static int staminaStatus(CommandContext<ServerCommandSource> ctx, Entity explicitTarget) throws CommandSyntaxException {
+        LivingEntity subject = resolveSubject(ctx, explicitTarget);
+        if (subject == null) {
+            ctx.getSource().sendError(feedback("No player to inspect - run as a player or supply a target."));
+            return 0;
+        }
+        CombatController controller = CombatControllerManager.getIfPresent(subject);
+        if (controller == null) {
+            ctx.getSource().sendFeedback(() -> feedback(subject.getName().getString() + " has no active CombatController."), false);
+            return 0;
+        }
+
+        ctx.getSource().sendFeedback(() -> feedback(subject.getName().getString()
+                + " | stamina=" + String.format(Locale.ROOT, "%.1f", controller.getCurrentStamina())
+                + "/" + String.format(Locale.ROOT, "%.1f", controller.getMaxStamina())
+                + " (" + Math.round(controller.getStaminaRatio() * 100) + "%)"
+                + " | exhausted=" + controller.isExhausted()), false);
+        return 1;
+    }
+
+    /**
+     * {@code /bcombat direction [target]} — reports the {@link
+     * CombatController} committed attack direction and locked guard
+     * direction for the executing player or an explicit target, exactly
+     * as {@code AttackDirectionTracker}/{@code GuardDirectionTracker}
+     * resolve and {@code CombatController#updateAttackDirection}/{@code
+     * #updateGuardDirection} store them.
+     */
+    private static int directionStatus(CommandContext<ServerCommandSource> ctx, Entity explicitTarget) throws CommandSyntaxException {
+        LivingEntity subject = resolveSubject(ctx, explicitTarget);
+        if (subject == null) {
+            ctx.getSource().sendError(feedback("No player to inspect - run as a player or supply a target."));
+            return 0;
+        }
+        CombatController controller = CombatControllerManager.getIfPresent(subject);
+        if (controller == null) {
+            ctx.getSource().sendFeedback(() -> feedback(subject.getName().getString() + " has no active CombatController."), false);
+            return 0;
+        }
+
+        ctx.getSource().sendFeedback(() -> feedback(subject.getName().getString()
+                + " | state=" + controller.getCombatState().name()
+                + " | attackDirection=" + controller.getAttackDirection().name()
+                + " | guardDirection=" + controller.getGuardDirection().name()), false);
+        return 1;
+    }
+
+    /**
+     * Resolves the subject a {@code combat}/{@code stamina}/{@code
+     * direction} invocation should report on: the explicit target
+     * argument if one was supplied, otherwise the command source's own
+     * player (so a player can quickly self-check without typing a
+     * selector). Returns {@code null} (never throws) if neither is
+     * available, e.g. run from the console with no target.
+     */
+    private static LivingEntity resolveSubject(CommandContext<ServerCommandSource> ctx, Entity explicitTarget) {
+        if (explicitTarget instanceof LivingEntity livingTarget) {
+            return livingTarget;
+        }
+        ServerPlayerEntity self = ctx.getSource().getPlayer();
+        return self;
     }
 
     // ------------------------------------------------------------------

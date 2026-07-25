@@ -24,6 +24,7 @@
 	},
 	"mixins": [
 		"bcombat.mixins.json",
+		"bcombat.common.mixins.json",
 		{
 			"config": "bcombat.client.mixins.json",
 			"environment": "client"

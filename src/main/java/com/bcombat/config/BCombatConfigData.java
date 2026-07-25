@@ -129,4 +129,7 @@ public final class BCombatConfigData {
     public double squadFriendlyFireConeCos = CombatConstants.SQUAD_FRIENDLY_FIRE_CONE_COS;
     public double squadMountedChargeDangerRadius = CombatConstants.SQUAD_MOUNTED_CHARGE_DANGER_RADIUS;
     public int aiReactionJitterTicks = CombatConstants.AI_REACTION_JITTER_TICKS;
+
+    // ---------------- Directional combat indicator (HUD) ----------------
+    public boolean directionalIndicatorAlwaysVisible = CombatConstants.DIRECTIONAL_INDICATOR_ALWAYS_VISIBLE;
 }
