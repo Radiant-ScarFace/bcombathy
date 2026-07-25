@@ -25,6 +25,9 @@ import com.bcombat.combat.events.GuardDirectionChangedEvent;
 import com.bcombat.combat.events.MovementModeChangedEvent;
 import com.bcombat.combat.events.ParryEvent;
 import com.bcombat.combat.events.PerfectBlockEvent;
+import com.bcombat.combat.events.WeaponChangedEvent;
+import com.bcombat.combat.events.WeaponEquippedEvent;
+import com.bcombat.combat.events.WeaponUnequippedEvent;
 import com.bcombat.combat.movement.MovementMode;
 import com.bcombat.combat.movement.MovementModifierManager;
 import com.bcombat.combat.player.CombatModeGuard;
@@ -32,7 +35,10 @@ import com.bcombat.combat.player.CombatStance;
 import com.bcombat.combat.state.CombatState;
 import com.bcombat.combat.state.CombatStateManager;
 import com.bcombat.combat.util.CombatConstants;
+import com.bcombat.combat.weapon.WeaponController;
+import com.bcombat.combat.weapon.WeaponProperties;
 import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.item.Item;
 
 import java.util.UUID;
 import java.util.Objects;
@@ -54,6 +60,7 @@ public final class CombatController {
     private final AnimationController animationController = new AnimationController();
     private final BlockController blockController = new BlockController();
     private final ChamberController chamberController = new ChamberController();
+    private final WeaponController weaponController = new WeaponController();
 
     private MovementMode movementMode = MovementMode.NORMAL;
     private int transitionTicksRemaining = 0;
@@ -152,6 +159,13 @@ public final class CombatController {
         if (newDirection == attackDirection) {
             return;
         }
+        // A weapon that doesn't support this direction simply ignores the
+        // proposal (the previously committed direction, if any, is kept)
+        // rather than silently falling back to a different direction the
+        // player didn't ask for.
+        if (newDirection != AttackDirection.NONE && !weaponController.getCurrentWeapon().supportsAttackDirection(newDirection)) {
+            return;
+        }
         AttackDirection previous = attackDirection;
         attackDirection = newDirection;
         CombatEvents.ATTACK_DIRECTION_CHANGED.invoker()
@@ -227,6 +241,13 @@ public final class CombatController {
     public void updateGuardDirection(GuardDirection proposed) {
         CombatState current = stateManager.getCurrentState();
         if (current != CombatState.ENTER_BLOCK && current != CombatState.BLOCK_IDLE) {
+            return;
+        }
+
+        // Same "ignore, don't substitute" handling as updateAttackDirection:
+        // a guard position the current weapon doesn't support is simply
+        // never proposed to BlockController.
+        if (proposed != GuardDirection.NONE && !weaponController.getCurrentWeapon().supportsGuardDirection(proposed)) {
             return;
         }
 
@@ -398,6 +419,25 @@ public final class CombatController {
         return blockController.getCurrentDirection();
     }
 
+    /**
+     * @return the item currently held in the main hand, or {@code null}
+     * for an empty hand.
+     */
+    public Item getEquippedWeaponItem() {
+        return weaponController.getCurrentItem();
+    }
+
+    /**
+     * @return the combat stats currently governing this player — either
+     * a registered weapon's properties, or {@link WeaponProperties#unarmed()}.
+     * Every future system that needs weapon-aware behavior (damage,
+     * stamina, AI, animation variants) should read this rather than
+     * inspecting the held {@link Item} directly.
+     */
+    public WeaponProperties getWeaponProperties() {
+        return weaponController.getCurrentWeapon();
+    }
+
     // ------------------------------------------------------------------
     // Per-tick driver - called by CombatControllerManager
     // ------------------------------------------------------------------
@@ -409,10 +449,79 @@ public final class CombatController {
      */
     public void tick() {
         applyGuardConditions();
+        updateEquippedWeapon();
         advanceTransitionTimers();
         movementModifierManager.tick(player);
         blockController.tick();
         animationController.tick(player, stateManager.getCurrentState(), movementMode, attackDirection, blockController.getCurrentDirection());
+    }
+
+    /**
+     * Detects a main-hand item change via {@link WeaponController} and,
+     * if one occurred, notifies the rest of the framework: fires {@link
+     * WeaponUnequippedEvent}/{@link WeaponEquippedEvent}/{@link
+     * WeaponChangedEvent} as appropriate, then re-validates the
+     * currently committed attack direction and locked guard direction
+     * against the newly equipped weapon's supported directions.
+     * <p>
+     * Runs every tick regardless of {@code CombatState} — a weapon swap
+     * needs to be picked up even outside Combat Mode, e.g. so a player
+     * who swaps weapons before entering combat immediately sees the new
+     * weapon's stats once they do.
+     */
+    private void updateEquippedWeapon() {
+        Item previousItem = weaponController.getCurrentItem();
+        WeaponProperties previousWeapon = weaponController.getCurrentWeapon();
+
+        if (!weaponController.tick(player)) {
+            return;
+        }
+
+        Item newItem = weaponController.getCurrentItem();
+        WeaponProperties newWeapon = weaponController.getCurrentWeapon();
+
+        if (previousItem != null) {
+            CombatEvents.WEAPON_UNEQUIPPED.invoker()
+                    .onWeaponUnequipped(new WeaponUnequippedEvent(player, previousItem, previousWeapon));
+        }
+        if (newItem != null) {
+            CombatEvents.WEAPON_EQUIPPED.invoker()
+                    .onWeaponEquipped(new WeaponEquippedEvent(player, newItem, newWeapon));
+        }
+        CombatEvents.WEAPON_CHANGED.invoker()
+                .onWeaponChanged(new WeaponChangedEvent(player, previousItem, previousWeapon, newItem, newWeapon));
+
+        revalidateDirectionsForWeapon(newWeapon);
+    }
+
+    /**
+     * Called immediately after a weapon change resolves. If the new
+     * weapon no longer supports the attack direction currently committed
+     * mid-wind-up, or the guard direction currently locked while
+     * blocking, that direction is cleared back to {@code NONE} — the
+     * same "available attacks"/"guard positions" update the design spec
+     * calls for on equip/unequip — rather than leaving the player
+     * committed to a direction their new weapon can't perform.
+     */
+    private void revalidateDirectionsForWeapon(WeaponProperties weapon) {
+        if (stateManager.getCurrentState() == CombatState.PREPARING_ATTACK
+                && attackDirection != AttackDirection.NONE
+                && !weapon.supportsAttackDirection(attackDirection)) {
+            AttackDirection previous = attackDirection;
+            attackDirection = AttackDirection.NONE;
+            CombatEvents.ATTACK_DIRECTION_CHANGED.invoker()
+                    .onAttackDirectionChanged(new AttackDirectionChangedEvent(player, previous, AttackDirection.NONE));
+        }
+
+        CombatState current = stateManager.getCurrentState();
+        GuardDirection currentGuard = blockController.getCurrentDirection();
+        if ((current == CombatState.ENTER_BLOCK || current == CombatState.BLOCK_IDLE)
+                && currentGuard != GuardDirection.NONE
+                && !weapon.supportsGuardDirection(currentGuard)) {
+            blockController.reset();
+            CombatEvents.GUARD_DIRECTION_CHANGED.invoker()
+                    .onGuardDirectionChanged(new GuardDirectionChangedEvent(player, currentGuard, GuardDirection.NONE));
+        }
     }
 
     private void applyGuardConditions() {
@@ -450,7 +559,7 @@ public final class CombatController {
             }
         } else if (current == CombatState.PREPARING_ATTACK) {
             windUpTicksElapsed++;
-            if (releaseBuffered && windUpTicksElapsed >= CombatConstants.MIN_ATTACK_PREPARATION_TICKS) {
+            if (releaseBuffered && windUpTicksElapsed >= effectiveWindUpTicks()) {
                 beginAttackRelease();
             }
         } else if (current == CombatState.ATTACKING) {
@@ -516,7 +625,7 @@ public final class CombatController {
      */
     private void beginAttackRelease() {
         if (stateManager.transitionTo(CombatState.ATTACKING)) {
-            transitionTicksRemaining = CombatConstants.ATTACK_RELEASE_DURATION_TICKS;
+            transitionTicksRemaining = effectiveReleaseTicks();
             releaseBuffered = false;
             CombatEvents.ATTACK_RELEASED.invoker()
                     .onAttackReleased(new AttackReleasedEvent(player, attackDirection));
@@ -563,7 +672,7 @@ public final class CombatController {
         }
 
         if (current == CombatState.RECOVERY) {
-            transitionTicksRemaining = CombatConstants.RECOVERY_DURATION_TICKS;
+            transitionTicksRemaining = effectiveRecoveryTicks();
             CombatEvents.ATTACK_RECOVERY_STARTED.invoker()
                     .onAttackRecoveryStarted(new AttackRecoveryStartedEvent(player));
         }
@@ -588,6 +697,55 @@ public final class CombatController {
             // guard direction never carries over into the next block.
             blockController.reset();
         }
+    }
+
+    // ------------------------------------------------------------------
+    // Weapon-scaled timing - the attack pipeline itself stays generic
+    // (CombatConstants holds the unarmed/base values); these helpers are
+    // the only place base timing is combined with the equipped weapon's
+    // modifiers, per CombatConstants.DEFAULT_RECOVERY_DURATION_MODIFIER's
+    // and WeaponProperties' documented intent.
+    // ------------------------------------------------------------------
+
+    /**
+     * @return the minimum wind-up duration, in ticks, before a buffered
+     * release is honored, scaled by the equipped weapon's {@link
+     * WeaponProperties#windUpModifier()}.
+     */
+    private int effectiveWindUpTicks() {
+        return scaledTicks(CombatConstants.MIN_ATTACK_PREPARATION_TICKS, weaponController.getCurrentWeapon().windUpModifier());
+    }
+
+    /**
+     * @return the {@code ATTACKING} state's duration, in ticks, scaled by
+     * whichever of the equipped weapon's {@link
+     * WeaponProperties#swingSpeedModifier()} or {@link
+     * WeaponProperties#thrustSpeedModifier()} applies to the currently
+     * committed {@link #attackDirection}.
+     */
+    private int effectiveReleaseTicks() {
+        WeaponProperties weapon = weaponController.getCurrentWeapon();
+        double modifier = attackDirection == AttackDirection.THRUST
+                ? weapon.thrustSpeedModifier()
+                : weapon.swingSpeedModifier();
+        return scaledTicks(CombatConstants.ATTACK_RELEASE_DURATION_TICKS, modifier);
+    }
+
+    /**
+     * @return the {@code RECOVERY} state's duration, in ticks, scaled by
+     * the equipped weapon's {@link WeaponProperties#recoveryModifier()}.
+     */
+    private int effectiveRecoveryTicks() {
+        return scaledTicks(CombatConstants.RECOVERY_DURATION_TICKS, weaponController.getCurrentWeapon().recoveryModifier());
+    }
+
+    /**
+     * Applies a weapon modifier to a base tick count, rounding to the
+     * nearest tick and clamping to a minimum of 1 so no weapon modifier
+     * can ever collapse a timing window to zero or negative ticks.
+     */
+    private static int scaledTicks(int baseTicks, double modifier) {
+        return Math.max(1, (int) Math.round(baseTicks * modifier));
     }
 
     private void setMovementMode(MovementMode newMode) {

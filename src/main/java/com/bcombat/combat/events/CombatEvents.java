@@ -144,6 +144,30 @@ public final class CombatEvents {
                         }
                     });
 
+    public static final Event<WeaponEquippedCallback> WEAPON_EQUIPPED =
+            EventFactory.createArrayBacked(WeaponEquippedCallback.class,
+                    callbacks -> event -> {
+                        for (WeaponEquippedCallback callback : callbacks) {
+                            callback.onWeaponEquipped(event);
+                        }
+                    });
+
+    public static final Event<WeaponUnequippedCallback> WEAPON_UNEQUIPPED =
+            EventFactory.createArrayBacked(WeaponUnequippedCallback.class,
+                    callbacks -> event -> {
+                        for (WeaponUnequippedCallback callback : callbacks) {
+                            callback.onWeaponUnequipped(event);
+                        }
+                    });
+
+    public static final Event<WeaponChangedCallback> WEAPON_CHANGED =
+            EventFactory.createArrayBacked(WeaponChangedCallback.class,
+                    callbacks -> event -> {
+                        for (WeaponChangedCallback callback : callbacks) {
+                            callback.onWeaponChanged(event);
+                        }
+                    });
+
     @FunctionalInterface
     public interface CombatEnterCallback {
         void onCombatEnter(CombatEnterEvent event);
@@ -222,5 +246,20 @@ public final class CombatEvents {
     @FunctionalInterface
     public interface ChamberSucceededCallback {
         void onChamberSucceeded(ChamberSucceededEvent event);
+    }
+
+    @FunctionalInterface
+    public interface WeaponEquippedCallback {
+        void onWeaponEquipped(WeaponEquippedEvent event);
+    }
+
+    @FunctionalInterface
+    public interface WeaponUnequippedCallback {
+        void onWeaponUnequipped(WeaponUnequippedEvent event);
+    }
+
+    @FunctionalInterface
+    public interface WeaponChangedCallback {
+        void onWeaponChanged(WeaponChangedEvent event);
     }
 }
