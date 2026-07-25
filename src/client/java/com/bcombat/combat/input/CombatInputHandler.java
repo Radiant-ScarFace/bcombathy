@@ -36,6 +36,8 @@ public final class CombatInputHandler {
     private boolean wasBlockKeyDown = false;
     private final AttackDirectionTracker attackDirectionTracker = new AttackDirectionTracker();
     private final GuardDirectionTracker guardDirectionTracker = new GuardDirectionTracker();
+    // TEST-ONLY SCAFFOLDING - see DefenseTestSimulator's class doc.
+    private final DefenseTestSimulator defenseTestSimulator = new DefenseTestSimulator();
 
     private CombatInputHandler() {
     }
@@ -55,6 +57,7 @@ public final class CombatInputHandler {
             wasBlockKeyDown = false;
             attackDirectionTracker.end();
             guardDirectionTracker.end();
+            defenseTestSimulator.onClientTick(client, null);
             return;
         }
 
@@ -73,6 +76,9 @@ public final class CombatInputHandler {
         handleBlockInput(client, controller);
 
         controller.tick();
+
+        // TEST-ONLY SCAFFOLDING - see DefenseTestSimulator's class doc.
+        defenseTestSimulator.onClientTick(client, controller);
     }
 
     private void handleAttackInput(MinecraftClient client, CombatController controller) {

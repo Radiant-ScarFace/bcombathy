@@ -27,14 +27,11 @@ import com.bcombat.combat.util.CombatConstants;
  * AttackDirectionTracker} classifies, {@code CombatController} owns the
  * committed value).
  * <p>
- * Reserved extension points (intentionally not stubbed out, since they
- * have no calling code yet): a future perfect-block phase would check
- * whether the locked direction matched an incoming hit within {@link
- * CombatConstants#PERFECT_BLOCK_WINDOW_TICKS_RESERVED} of impact; a
- * future chamber-block phase would drive {@code CombatState.CHAMBER}
- * from here; a future stamina phase would gate {@link #requestDirection}
- * and block entry on available stamina. All three read the same locked
- * direction this class already exposes.
+ * Perfect Block and Parry detection (see {@code
+ * CombatController#notifyIncomingAttack}) reads the locked direction
+ * this class exposes rather than duplicating it; a future stamina phase
+ * would similarly gate {@link #requestDirection} and block entry on
+ * available stamina.
  */
 public final class BlockController {
 

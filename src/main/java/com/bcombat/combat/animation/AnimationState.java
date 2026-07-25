@@ -3,9 +3,11 @@ package com.bcombat.combat.animation;
 /**
  * Every generic locomotion animation state supported in this phase, plus
  * the directional attack wind-up/release states, the directional block
- * states, and generic recovery. Feint and chamber animations are not
- * declared here yet — those belong to future systems and will extend
- * this enum when built.
+ * states, generic recovery, and the Perfect Block / Parry / Chamber
+ * defensive reaction states. These four are placeholders in this phase —
+ * a future GeckoLib model layer wires them to real animation clips; a
+ * dedicated feint animation is not declared here yet since the feint
+ * system itself remains unimplemented.
  */
 public enum AnimationState {
     IDLE,
@@ -40,5 +42,10 @@ public enum AnimationState {
     GUARD_LEFT,
     GUARD_RIGHT,
     GUARD_UP,
-    GUARD_THRUST
+    GUARD_THRUST,
+
+    PERFECT_BLOCK,
+    PARRY,
+    CHAMBER_PREPARE,
+    CHAMBER_SUCCESS
 }

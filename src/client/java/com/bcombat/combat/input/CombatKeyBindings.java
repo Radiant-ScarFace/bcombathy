@@ -30,6 +30,7 @@ public final class CombatKeyBindings {
 
     public static KeyBinding combatMode;
     public static KeyBinding block;
+    public static KeyBinding debugSimulateIncomingAttack;
 
     private CombatKeyBindings() {
         // Static registration holder, no instances.
@@ -47,6 +48,20 @@ public final class CombatKeyBindings {
                 "key.bcombat.block",
                 InputUtil.Type.MOUSE,
                 GLFW.GLFW_MOUSE_BUTTON_3,
+                CATEGORY
+        ));
+
+        // TEST-ONLY SCAFFOLDING: hit detection, AI, and networking are all
+        // out of scope for this phase, so there is no real system yet that
+        // can call CombatController#notifyIncomingAttack. This keybinding
+        // exists purely so Perfect Block, Parry, and Chamber can be
+        // verified in-game; it should be removed once a real hit-detection
+        // system exists to call that method instead. See
+        // com.bcombat.combat.input.DefenseTestSimulator.
+        debugSimulateIncomingAttack = KeyBindingHelper.registerKeyBinding(new KeyBinding(
+                "key.bcombat.debug_simulate_incoming_attack",
+                InputUtil.Type.KEYSYM,
+                GLFW.GLFW_KEY_H,
                 CATEGORY
         ));
     }

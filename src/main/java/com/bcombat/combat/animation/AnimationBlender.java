@@ -16,32 +16,50 @@ public final class AnimationBlender {
     private AnimationState previousState;
     private AnimationState currentState;
     private int ticksSinceChange;
+    private int activeBlendDurationTicks;
 
     public AnimationBlender(AnimationState initialState) {
         this.previousState = initialState;
         this.currentState = initialState;
-        this.ticksSinceChange = CombatConstants.ANIMATION_BLEND_DURATION_TICKS;
+        this.activeBlendDurationTicks = CombatConstants.ANIMATION_BLEND_DURATION_TICKS;
+        this.ticksSinceChange = activeBlendDurationTicks;
     }
 
     /**
-     * Begins a new blend if the target state differs from the current one.
-     * Safe to call every tick with the same value; it is a no-op once
-     * already targeting that state.
+     * Begins a new blend if the target state differs from the current one,
+     * using the default {@link CombatConstants#ANIMATION_BLEND_DURATION_TICKS}
+     * blend speed. Safe to call every tick with the same value; it is a
+     * no-op once already targeting that state.
      */
     public void setTargetState(AnimationState targetState) {
+        setTargetState(targetState, CombatConstants.ANIMATION_BLEND_DURATION_TICKS);
+    }
+
+    /**
+     * Begins a new blend using a caller-specified blend duration, so
+     * different transitions can blend at different speeds (e.g. a
+     * snappier blend into a Perfect Block/Parry/Chamber reaction than
+     * ordinary locomotion). Safe to call every tick with the same value;
+     * it is a no-op once already targeting that state — the blend speed
+     * a transition started with is what plays out even if a later call
+     * this same tick passes a different duration for a state that hasn't
+     * actually changed.
+     */
+    public void setTargetState(AnimationState targetState, int blendDurationTicks) {
         if (targetState == currentState) {
             return;
         }
         this.previousState = currentState;
         this.currentState = targetState;
         this.ticksSinceChange = 0;
+        this.activeBlendDurationTicks = Math.max(1, blendDurationTicks);
     }
 
     /**
      * Advances the blend timer. Must be called once per tick.
      */
     public void tick() {
-        if (ticksSinceChange < CombatConstants.ANIMATION_BLEND_DURATION_TICKS) {
+        if (ticksSinceChange < activeBlendDurationTicks) {
             ticksSinceChange++;
         }
     }
@@ -58,6 +76,6 @@ public final class AnimationBlender {
      * @return smoothed progress from previousState (0.0) to currentState (1.0).
      */
     public float getBlendWeight() {
-        return MathUtil.tickProgress(ticksSinceChange, CombatConstants.ANIMATION_BLEND_DURATION_TICKS);
+        return MathUtil.tickProgress(ticksSinceChange, activeBlendDurationTicks);
     }
 }

@@ -43,7 +43,7 @@ public enum CombatState {
     PREPARING_ATTACK {
         @Override
         public Set<CombatState> allowedNextStates() {
-            return EnumSet.of(ATTACKING, FEINT, COMBAT_IDLE);
+            return EnumSet.of(ATTACKING, FEINT, COMBAT_IDLE, CHAMBER_PREPARE);
         }
     },
 
@@ -75,7 +75,7 @@ public enum CombatState {
     BLOCK_IDLE {
         @Override
         public Set<CombatState> allowedNextStates() {
-            return EnumSet.of(CHAMBER, EXIT_BLOCK);
+            return EnumSet.of(EXIT_BLOCK, PERFECT_BLOCK, PARRY);
         }
     },
 
@@ -95,8 +95,55 @@ public enum CombatState {
         }
     },
 
-    /** Reserved for the future chamber-block system. */
-    CHAMBER {
+    /**
+     * A correctly-directed guard held within the Perfect Block timing
+     * window of an incoming attack (see {@code CombatConstants#PERFECT_BLOCK_WINDOW_TICKS}).
+     * Reached only via {@code CombatController#notifyIncomingAttack} —
+     * the extension point a future hit-detection system will call.
+     * Resolves back to {@link #BLOCK_IDLE} once its dedicated animation
+     * has played out.
+     */
+    PERFECT_BLOCK {
+        @Override
+        public Set<CombatState> allowedNextStates() {
+            return EnumSet.of(BLOCK_IDLE, EXIT_BLOCK);
+        }
+    },
+
+    /**
+     * A Perfect Block landed within the even tighter Parry timing window
+     * (see {@code CombatConstants#PARRY_WINDOW_TICKS}). Interrupts the
+     * attacker's animation (future extension point) and returns the
+     * defender directly to full combat control.
+     */
+    PARRY {
+        @Override
+        public Set<CombatState> allowedNextStates() {
+            return EnumSet.of(COMBAT_IDLE);
+        }
+    },
+
+    /**
+     * The defender's committed attack direction matched an incoming
+     * attack's direction while winding up. Holds briefly while the
+     * timing outcome is resolved: success advances to
+     * {@link #CHAMBER_SUCCESS}, a mistimed attempt returns to
+     * {@link #PREPARING_ATTACK} so the swing simply continues.
+     */
+    CHAMBER_PREPARE {
+        @Override
+        public Set<CombatState> allowedNextStates() {
+            return EnumSet.of(CHAMBER_SUCCESS, PREPARING_ATTACK);
+        }
+    },
+
+    /**
+     * A chamber resolved successfully: direction matched and timing fell
+     * within {@code CombatConstants#CHAMBER_WINDOW_TICKS}. No counter
+     * damage is applied yet — this is purely a detection/animation state
+     * with extension points for a future counter-attack phase.
+     */
+    CHAMBER_SUCCESS {
         @Override
         public Set<CombatState> allowedNextStates() {
             return EnumSet.of(COMBAT_IDLE);

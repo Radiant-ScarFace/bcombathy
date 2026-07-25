@@ -158,10 +158,66 @@ public final class CombatConstants {
      */
     public static final int GUARD_SWITCH_DELAY_TICKS = 4;
 
+    // ------------------------------------------------------------------
+    // Defense: Perfect Block, Parry, and Chamber (Bannerlord-inspired
+    // skill-based defense). All timing here is measured against
+    // CombatController#notifyIncomingAttack's ticksUntilImpact — the
+    // extension point a future hit-detection/AI/networking system calls
+    // the instant an attack is about to connect.
+    // ------------------------------------------------------------------
+
     /**
-     * Reserved for the future perfect-block system: the window, in ticks,
-     * around an incoming hit during which a correctly-directed block
-     * counts as a perfect block. Unused until hit detection exists.
+     * The window, in ticks, around an incoming attack's impact during
+     * which a correctly-directed guard counts as a Perfect Block. Was
+     * previously reserved and unused until this phase; now the active
+     * timing source for {@code CombatState.PERFECT_BLOCK}.
      */
-    public static final int PERFECT_BLOCK_WINDOW_TICKS_RESERVED = 4;
+    public static final int PERFECT_BLOCK_WINDOW_TICKS = 6;
+
+    /**
+     * A tighter subset of {@link #PERFECT_BLOCK_WINDOW_TICKS}. A Perfect
+     * Block landing inside this narrower window upgrades to
+     * {@code CombatState.PARRY} instead. Must be less than or equal to
+     * {@link #PERFECT_BLOCK_WINDOW_TICKS}.
+     */
+    public static final int PARRY_WINDOW_TICKS = 3;
+
+    /** Ticks held in {@code CombatState.PERFECT_BLOCK} before returning to {@code BLOCK_IDLE}. */
+    public static final int PERFECT_BLOCK_STATE_DURATION_TICKS = 6;
+
+    /** Ticks held in {@code CombatState.PARRY} before control returns to {@code COMBAT_IDLE}. */
+    public static final int PARRY_STATE_DURATION_TICKS = 5;
+
+    /**
+     * The window, in ticks, around an incoming attack's impact during
+     * which a defender's matching committed {@code AttackDirection}
+     * counts as a successful Chamber.
+     */
+    public static final int CHAMBER_WINDOW_TICKS = 5;
+
+    /**
+     * Ticks spent in {@code CombatState.CHAMBER_PREPARE} while the
+     * timing outcome resolves, before advancing to
+     * {@code CHAMBER_SUCCESS} or reverting to {@code PREPARING_ATTACK}.
+     */
+    public static final int CHAMBER_PREPARE_DURATION_TICKS = 4;
+
+    /** Ticks held in {@code CombatState.CHAMBER_SUCCESS} before returning to {@code COMBAT_IDLE}. */
+    public static final int CHAMBER_SUCCESS_DURATION_TICKS = 6;
+
+    /**
+     * Blend duration, in ticks, used specifically for the Perfect Block /
+     * Parry / Chamber reaction animations. Kept independent of
+     * {@link #ANIMATION_BLEND_DURATION_TICKS} so these snappier defensive
+     * reactions can be tuned without affecting locomotion/attack blending.
+     */
+    public static final int DEFENSE_ANIMATION_BLEND_DURATION_TICKS = 3;
+
+    /**
+     * Reserved multiplier for future weapon-specific adjustment of
+     * defense timing windows (e.g. a heavier weapon narrowing its
+     * Perfect Block window, or a buckler widening it). Unused until
+     * weapon stats exist; kept at 1.0 (no change).
+     */
+    public static final double DEFAULT_DEFENSE_TIMING_MODIFIER = 1.0;
 }

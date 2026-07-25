@@ -28,8 +28,24 @@ public final class AnimationController {
      */
     public void tick(PlayerEntity player, CombatState combatState, MovementMode movementMode, AttackDirection attackDirection, GuardDirection guardDirection) {
         AnimationState target = resolveTargetState(player, combatState, movementMode, attackDirection, guardDirection);
-        blender.setTargetState(target);
+        int blendDuration = isDefensiveReactionState(target)
+                ? CombatConstants.DEFENSE_ANIMATION_BLEND_DURATION_TICKS
+                : CombatConstants.ANIMATION_BLEND_DURATION_TICKS;
+        blender.setTargetState(target, blendDuration);
         blender.tick();
+    }
+
+    /**
+     * Perfect Block, Parry, and Chamber reactions blend in faster than
+     * ordinary locomotion/attack states, since they represent a snap
+     * response to precise timing rather than an eased movement change.
+     * See {@link CombatConstants#DEFENSE_ANIMATION_BLEND_DURATION_TICKS}.
+     */
+    private static boolean isDefensiveReactionState(AnimationState state) {
+        return state == AnimationState.PERFECT_BLOCK
+                || state == AnimationState.PARRY
+                || state == AnimationState.CHAMBER_PREPARE
+                || state == AnimationState.CHAMBER_SUCCESS;
     }
 
     private AnimationState resolveTargetState(PlayerEntity player, CombatState combatState, MovementMode movementMode, AttackDirection attackDirection, GuardDirection guardDirection) {
@@ -56,6 +72,18 @@ public final class AnimationController {
         }
         if (combatState == CombatState.BLOCK_IDLE) {
             return guardStateFor(guardDirection);
+        }
+        if (combatState == CombatState.PERFECT_BLOCK) {
+            return AnimationState.PERFECT_BLOCK;
+        }
+        if (combatState == CombatState.PARRY) {
+            return AnimationState.PARRY;
+        }
+        if (combatState == CombatState.CHAMBER_PREPARE) {
+            return AnimationState.CHAMBER_PREPARE;
+        }
+        if (combatState == CombatState.CHAMBER_SUCCESS) {
+            return AnimationState.CHAMBER_SUCCESS;
         }
 
         boolean inCombat = movementMode == MovementMode.COMBAT;

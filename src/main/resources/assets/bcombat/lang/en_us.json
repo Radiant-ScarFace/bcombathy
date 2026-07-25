@@ -1,5 +1,6 @@
 {
   "key.categories.bcombat": "Bannerlord Combat",
   "key.bcombat.combat_mode": "Combat Mode (Hold)",
-  "key.bcombat.block": "Block (Hold)"
+  "key.bcombat.block": "Block (Hold)",
+  "key.bcombat.debug_simulate_incoming_attack": "[Debug] Simulate Incoming Attack"
 }

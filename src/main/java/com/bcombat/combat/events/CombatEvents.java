@@ -112,6 +112,38 @@ public final class CombatEvents {
                         }
                     });
 
+    public static final Event<PerfectBlockCallback> PERFECT_BLOCK =
+            EventFactory.createArrayBacked(PerfectBlockCallback.class,
+                    callbacks -> event -> {
+                        for (PerfectBlockCallback callback : callbacks) {
+                            callback.onPerfectBlock(event);
+                        }
+                    });
+
+    public static final Event<ParryCallback> PARRY =
+            EventFactory.createArrayBacked(ParryCallback.class,
+                    callbacks -> event -> {
+                        for (ParryCallback callback : callbacks) {
+                            callback.onParry(event);
+                        }
+                    });
+
+    public static final Event<ChamberStartedCallback> CHAMBER_STARTED =
+            EventFactory.createArrayBacked(ChamberStartedCallback.class,
+                    callbacks -> event -> {
+                        for (ChamberStartedCallback callback : callbacks) {
+                            callback.onChamberStarted(event);
+                        }
+                    });
+
+    public static final Event<ChamberSucceededCallback> CHAMBER_SUCCEEDED =
+            EventFactory.createArrayBacked(ChamberSucceededCallback.class,
+                    callbacks -> event -> {
+                        for (ChamberSucceededCallback callback : callbacks) {
+                            callback.onChamberSucceeded(event);
+                        }
+                    });
+
     @FunctionalInterface
     public interface CombatEnterCallback {
         void onCombatEnter(CombatEnterEvent event);
@@ -170,5 +202,25 @@ public final class CombatEvents {
     @FunctionalInterface
     public interface GuardDirectionChangedCallback {
         void onGuardDirectionChanged(GuardDirectionChangedEvent event);
+    }
+
+    @FunctionalInterface
+    public interface PerfectBlockCallback {
+        void onPerfectBlock(PerfectBlockEvent event);
+    }
+
+    @FunctionalInterface
+    public interface ParryCallback {
+        void onParry(ParryEvent event);
+    }
+
+    @FunctionalInterface
+    public interface ChamberStartedCallback {
+        void onChamberStarted(ChamberStartedEvent event);
+    }
+
+    @FunctionalInterface
+    public interface ChamberSucceededCallback {
+        void onChamberSucceeded(ChamberSucceededEvent event);
     }
 }

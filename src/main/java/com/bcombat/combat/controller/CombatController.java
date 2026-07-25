@@ -2,8 +2,12 @@ package com.bcombat.combat.controller;
 
 import com.bcombat.combat.animation.AnimationController;
 import com.bcombat.combat.attack.AttackDirection;
+import com.bcombat.combat.attack.ChamberController;
 import com.bcombat.combat.block.BlockController;
 import com.bcombat.combat.block.GuardDirection;
+import com.bcombat.combat.defense.DefenseResult;
+import com.bcombat.combat.defense.DirectionCompatibility;
+import com.bcombat.combat.defense.IncomingAttack;
 import com.bcombat.combat.events.AttackDirectionChangedEvent;
 import com.bcombat.combat.events.AttackPreparationCancelledEvent;
 import com.bcombat.combat.events.AttackPreparationStartedEvent;
@@ -11,12 +15,16 @@ import com.bcombat.combat.events.AttackRecoveryStartedEvent;
 import com.bcombat.combat.events.AttackReleasedEvent;
 import com.bcombat.combat.events.BlockEndedEvent;
 import com.bcombat.combat.events.BlockStartedEvent;
+import com.bcombat.combat.events.ChamberStartedEvent;
+import com.bcombat.combat.events.ChamberSucceededEvent;
 import com.bcombat.combat.events.CombatEnterEvent;
 import com.bcombat.combat.events.CombatEvents;
 import com.bcombat.combat.events.CombatExitEvent;
 import com.bcombat.combat.events.CombatStateChangedEvent;
 import com.bcombat.combat.events.GuardDirectionChangedEvent;
 import com.bcombat.combat.events.MovementModeChangedEvent;
+import com.bcombat.combat.events.ParryEvent;
+import com.bcombat.combat.events.PerfectBlockEvent;
 import com.bcombat.combat.movement.MovementMode;
 import com.bcombat.combat.movement.MovementModifierManager;
 import com.bcombat.combat.player.CombatModeGuard;
@@ -25,6 +33,9 @@ import com.bcombat.combat.state.CombatState;
 import com.bcombat.combat.state.CombatStateManager;
 import com.bcombat.combat.util.CombatConstants;
 import net.minecraft.entity.player.PlayerEntity;
+
+import java.util.UUID;
+import java.util.Objects;
 
 /**
  * The single per-player entry point for the combat framework. Every future
@@ -42,6 +53,7 @@ public final class CombatController {
     private final MovementModifierManager movementModifierManager = new MovementModifierManager();
     private final AnimationController animationController = new AnimationController();
     private final BlockController blockController = new BlockController();
+    private final ChamberController chamberController = new ChamberController();
 
     private MovementMode movementMode = MovementMode.NORMAL;
     private int transitionTicksRemaining = 0;
@@ -50,6 +62,15 @@ public final class CombatController {
     private int windUpTicksElapsed = 0;
     private boolean releaseBuffered = false;
     private boolean nextAttackBuffered = false;
+
+    /**
+     * Identity of the last {@link IncomingAttack} this controller resolved
+     * into a Perfect Block, Parry, or Chamber. Prevents the same physical
+     * swing — which a future hit-detection system may re-notify more than
+     * once as it closes in — from ever double-triggering a defensive
+     * mechanic. See {@link #notifyIncomingAttack}.
+     */
+    private UUID lastHandledAttackId;
 
     public CombatController(PlayerEntity player) {
         this.player = player;
@@ -188,7 +209,8 @@ public final class CombatController {
      */
     public void requestExitBlock() {
         CombatState current = stateManager.getCurrentState();
-        if (current != CombatState.ENTER_BLOCK && current != CombatState.BLOCK_IDLE) {
+        if (current != CombatState.ENTER_BLOCK && current != CombatState.BLOCK_IDLE
+                && current != CombatState.PERFECT_BLOCK) {
             return;
         }
         stateManager.forceTransitionTo(CombatState.EXIT_BLOCK);
@@ -212,6 +234,141 @@ public final class CombatController {
         if (blockController.requestDirection(proposed)) {
             CombatEvents.GUARD_DIRECTION_CHANGED.invoker()
                     .onGuardDirectionChanged(new GuardDirectionChangedEvent(player, previous, blockController.getCurrentDirection()));
+        }
+    }
+
+    /**
+     * The extension point a future hit-detection/AI/networking system
+     * calls the instant an attack is about to connect with this player,
+     * so this controller can evaluate whether the defender's current
+     * guard or wind-up qualifies for a Perfect Block, Parry, or Chamber.
+     * <p>
+     * This method resolves timing/direction and drives the state machine
+     * and events only — no damage, hit registration, or stamina cost is
+     * applied here, since those systems are explicitly out of scope for
+     * this phase.
+     * <ul>
+     *     <li>From {@code ENTER_BLOCK}/{@code BLOCK_IDLE}: checked against
+     *     the locked guard direction for a Perfect Block/Parry.</li>
+     *     <li>From {@code PREPARING_ATTACK}: checked against the
+     *     committed attack direction for a Chamber.</li>
+     *     <li>From any other state: no-op, returns {@link DefenseResult#NONE}.</li>
+     * </ul>
+     * Safe to call more than once for the same physical swing — see
+     * {@link IncomingAttack#id()} — a given identity is only ever
+     * resolved once, which is what satisfies "prevent duplicate
+     * triggering" for Perfect Block.
+     *
+     * @return which defensive mechanic (if any) resolved from this notification.
+     */
+    public DefenseResult notifyIncomingAttack(IncomingAttack incoming) {
+        Objects.requireNonNull(incoming, "incoming must not be null");
+
+        if (incoming.id().equals(lastHandledAttackId)) {
+            return DefenseResult.NONE;
+        }
+
+        CombatState current = stateManager.getCurrentState();
+        DefenseResult result = DefenseResult.NONE;
+
+        if (current == CombatState.ENTER_BLOCK || current == CombatState.BLOCK_IDLE) {
+            result = attemptBlockDefense(incoming);
+        } else if (current == CombatState.PREPARING_ATTACK) {
+            result = attemptChamber(incoming);
+        }
+
+        if (result != DefenseResult.NONE) {
+            lastHandledAttackId = incoming.id();
+        }
+        return result;
+    }
+
+    /**
+     * Evaluates {@code incoming} for a Perfect Block or Parry against the
+     * defender's currently locked guard direction. A Parry is a Perfect
+     * Block whose timing also fell within the tighter {@link
+     * CombatConstants#PARRY_WINDOW_TICKS}, so both events fire for a
+     * Parry, but only one state is ever entered.
+     */
+    private DefenseResult attemptBlockDefense(IncomingAttack incoming) {
+        GuardDirection required = DirectionCompatibility.matchingGuard(incoming.direction());
+        if (required == GuardDirection.NONE || blockController.getCurrentDirection() != required) {
+            return DefenseResult.NONE;
+        }
+
+        int deviation = Math.abs(incoming.ticksUntilImpact());
+        if (deviation > CombatConstants.PERFECT_BLOCK_WINDOW_TICKS) {
+            return DefenseResult.NONE;
+        }
+
+        boolean withinParryWindow = deviation <= CombatConstants.PARRY_WINDOW_TICKS;
+        CombatState target = withinParryWindow ? CombatState.PARRY : CombatState.PERFECT_BLOCK;
+
+        if (!stateManager.transitionTo(target)) {
+            return DefenseResult.NONE;
+        }
+
+        transitionTicksRemaining = withinParryWindow
+                ? CombatConstants.PARRY_STATE_DURATION_TICKS
+                : CombatConstants.PERFECT_BLOCK_STATE_DURATION_TICKS;
+
+        CombatEvents.PERFECT_BLOCK.invoker()
+                .onPerfectBlock(new PerfectBlockEvent(player, incoming.attacker(), required, incoming.direction()));
+
+        if (withinParryWindow) {
+            CombatEvents.PARRY.invoker()
+                    .onParry(new ParryEvent(player, incoming.attacker(), required, incoming.direction()));
+            return DefenseResult.PARRY;
+        }
+        return DefenseResult.PERFECT_BLOCK;
+    }
+
+    /**
+     * Evaluates {@code incoming} for a Chamber against the defender's
+     * committed attack direction. Direction is checked immediately;
+     * timing is recorded via {@link ChamberController} and resolved a
+     * few ticks later by {@link #resolveChamberOutcome()} once {@code
+     * CHAMBER_PREPARE}'s hold duration elapses, so the prepare animation
+     * always gets a chance to play regardless of outcome.
+     */
+    private DefenseResult attemptChamber(IncomingAttack incoming) {
+        if (incoming.direction() == AttackDirection.NONE || attackDirection != incoming.direction()) {
+            return DefenseResult.NONE;
+        }
+
+        if (!stateManager.transitionTo(CombatState.CHAMBER_PREPARE)) {
+            return DefenseResult.NONE;
+        }
+
+        boolean timingSuccess = Math.abs(incoming.ticksUntilImpact()) <= CombatConstants.CHAMBER_WINDOW_TICKS;
+        transitionTicksRemaining = CombatConstants.CHAMBER_PREPARE_DURATION_TICKS;
+        chamberController.begin(incoming, timingSuccess);
+
+        CombatEvents.CHAMBER_STARTED.invoker()
+                .onChamberStarted(new ChamberStartedEvent(player, incoming.attacker(), incoming.direction()));
+
+        return DefenseResult.CHAMBER_STARTED;
+    }
+
+    /**
+     * Resolves a pending chamber attempt once {@code CHAMBER_PREPARE}'s
+     * hold duration elapses: advances to {@code CHAMBER_SUCCESS} and
+     * fires {@link ChamberSucceededEvent} if timing was within {@link
+     * CombatConstants#CHAMBER_WINDOW_TICKS}, otherwise reverts to {@code
+     * PREPARING_ATTACK} so the wind-up simply continues uninterrupted.
+     */
+    private void resolveChamberOutcome() {
+        boolean success = chamberController.wasTimingSuccessful();
+        PlayerEntity attacker = chamberController.getPendingAttacker();
+        AttackDirection direction = chamberController.getPendingDirection();
+        chamberController.reset();
+
+        if (success && stateManager.transitionTo(CombatState.CHAMBER_SUCCESS)) {
+            transitionTicksRemaining = CombatConstants.CHAMBER_SUCCESS_DURATION_TICKS;
+            CombatEvents.CHAMBER_SUCCEEDED.invoker()
+                    .onChamberSucceeded(new ChamberSucceededEvent(player, attacker, direction));
+        } else {
+            stateManager.transitionTo(CombatState.PREPARING_ATTACK);
         }
     }
 
@@ -320,6 +477,30 @@ public final class CombatController {
                 transitionTicksRemaining--;
             }
         } else if (current == CombatState.EXIT_BLOCK) {
+            if (transitionTicksRemaining <= 0) {
+                stateManager.transitionTo(CombatState.COMBAT_IDLE);
+            } else {
+                transitionTicksRemaining--;
+            }
+        } else if (current == CombatState.PERFECT_BLOCK) {
+            if (transitionTicksRemaining <= 0) {
+                stateManager.transitionTo(CombatState.BLOCK_IDLE);
+            } else {
+                transitionTicksRemaining--;
+            }
+        } else if (current == CombatState.PARRY) {
+            if (transitionTicksRemaining <= 0) {
+                stateManager.transitionTo(CombatState.COMBAT_IDLE);
+            } else {
+                transitionTicksRemaining--;
+            }
+        } else if (current == CombatState.CHAMBER_PREPARE) {
+            if (transitionTicksRemaining <= 0) {
+                resolveChamberOutcome();
+            } else {
+                transitionTicksRemaining--;
+            }
+        } else if (current == CombatState.CHAMBER_SUCCESS) {
             if (transitionTicksRemaining <= 0) {
                 stateManager.transitionTo(CombatState.COMBAT_IDLE);
             } else {
