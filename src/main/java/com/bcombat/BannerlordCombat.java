@@ -4,6 +4,8 @@ import com.bcombat.combat.damage.DamageService;
 import com.bcombat.combat.damage.DefaultArmorRegistrations;
 import com.bcombat.combat.weapon.DefaultWeaponRegistrations;
 import com.bcombat.command.BCombatCommand;
+import com.bcombat.config.BCombatConfig;
+import com.bcombat.debug.CombatDebugLogger;
 import com.bcombat.server.ServerCombatLifecycleHandler;
 import com.bcombat.server.ServerCombatTickHandler;
 
@@ -27,6 +29,12 @@ public class BannerlordCombat implements ModInitializer {
 		// This code runs as soon as Minecraft is in a mod-load-ready state.
 		// However, some things (like resources) may still be uninitialized.
 		// Proceed with mild caution.
+
+		// Loads config/bcombat.json into CombatConstants (creating the
+		// file with current defaults if it doesn't exist yet). Must run
+		// FIRST, before any system below reads a CombatConstants value
+		// during its own setup - see BCombatConfig's class docs.
+		BCombatConfig.load();
 
 		// Registers the example vanilla-item weapon mappings so the weapon
 		// framework (WeaponRegistry/WeaponController/CombatController) is
@@ -65,9 +73,16 @@ public class BannerlordCombat implements ModInitializer {
 		// which event owns which slice of that lifecycle.
 		ServerCombatLifecycleHandler.register();
 
-		// Registers the /bcombat ai debug command tree (enable/disable/
-		// difficulty/list) - the operator-facing control surface for
-		// AICombatManager. See BCombatCommand's class docs.
+		// Attaches every debug-log listener to CombatEvents (inert until
+		// enabled via /bcombat debug true). See CombatDebugLogger's
+		// class docs for why registration and enablement are separate.
+		CombatDebugLogger.register();
+
+		// Registers the /bcombat command tree - ai enable/disable/
+		// difficulty/list, debug on/off, and config reload/save - the
+		// operator-facing control surface for AICombatManager,
+		// CombatDebugLogger, and BCombatConfig. See BCombatCommand's
+		// class docs.
 		BCombatCommand.register();
 
 		LOGGER.info("Hello Fabric world!");

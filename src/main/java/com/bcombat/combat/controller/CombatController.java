@@ -1159,8 +1159,15 @@ public final class CombatController {
 
         if (current == CombatState.RECOVERY) {
             transitionTicksRemaining = effectiveRecoveryTicks();
+            if (authoritative) {
+                movementModifierManager.enableRecoveryPenalty(player);
+            }
             CombatEvents.ATTACK_RECOVERY_STARTED.invoker()
                     .onAttackRecoveryStarted(new AttackRecoveryStartedEvent(player));
+        } else if (previous == CombatState.RECOVERY) {
+            if (authoritative) {
+                movementModifierManager.disableRecoveryPenalty(player);
+            }
         }
 
         if (current == CombatState.ENTER_BLOCK) {

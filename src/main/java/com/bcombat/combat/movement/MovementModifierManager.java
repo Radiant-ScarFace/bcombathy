@@ -75,11 +75,13 @@ public final class MovementModifierManager {
             speedAttribute.removeModifier(WALK_MODIFIER_UUID);
             speedAttribute.removeModifier(SPRINT_MODIFIER_UUID);
             speedAttribute.removeModifier(WIND_UP_MODIFIER_UUID);
+            speedAttribute.removeModifier(RECOVERY_MODIFIER_UUID);
             speedAttribute.removeModifier(EXHAUSTION_MODIFIER_UUID);
         }
         combatModifierApplied = false;
         sprintModifierApplied = false;
         windUpModifierApplied = false;
+        recoveryModifierApplied = false;
         exhaustionModifierApplied = false;
     }
 
@@ -117,6 +119,44 @@ public final class MovementModifierManager {
             speedAttribute.removeModifier(WIND_UP_MODIFIER_UUID);
         }
         windUpModifierApplied = false;
+    }
+
+    /**
+     * Adds the extra speed penalty applied while in {@code
+     * CombatState.RECOVERY} — the brief follow-through window after a
+     * swing before the player is fully reset to a ready stance. Safe to
+     * call repeatedly; will not double-apply. Intended to be called by
+     * {@link com.bcombat.combat.controller.CombatController} on
+     * entering {@code RECOVERY}.
+     */
+    public void enableRecoveryPenalty(LivingEntity player) {
+        EntityAttributeInstance speedAttribute = getSpeedAttribute(player);
+        if (speedAttribute == null || recoveryModifierApplied) {
+            return;
+        }
+
+        speedAttribute.addPersistentModifier(new EntityAttributeModifier(
+                RECOVERY_MODIFIER_UUID,
+                "Attack recovery penalty",
+                CombatConstants.RECOVERY_SPEED_MODIFIER,
+                Operation.MULTIPLY_TOTAL
+        ));
+        recoveryModifierApplied = true;
+    }
+
+    /**
+     * Removes the recovery speed penalty. Safe to call repeatedly,
+     * including when no recovery penalty is currently applied. Intended
+     * to be called the moment {@code RECOVERY} is left for any reason
+     * (natural completion or a forced exit) so the penalty never
+     * outlives the recovery window.
+     */
+    public void disableRecoveryPenalty(LivingEntity player) {
+        EntityAttributeInstance speedAttribute = getSpeedAttribute(player);
+        if (speedAttribute != null) {
+            speedAttribute.removeModifier(RECOVERY_MODIFIER_UUID);
+        }
+        recoveryModifierApplied = false;
     }
 
     /**

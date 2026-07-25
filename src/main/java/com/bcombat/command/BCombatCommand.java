@@ -5,8 +5,11 @@ import com.bcombat.combat.ai.AICombatManager;
 import com.bcombat.combat.ai.AIDifficultyPreset;
 import com.bcombat.combat.controller.CombatController;
 import com.bcombat.combat.controller.CombatControllerManager;
+import com.bcombat.config.BCombatConfig;
+import com.bcombat.debug.CombatDebugLogger;
 
 import com.mojang.brigadier.CommandDispatcher;
+import com.mojang.brigadier.arguments.BoolArgumentType;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.context.CommandContext;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
@@ -95,7 +98,57 @@ public final class BCombatCommand {
                                                 .suggests(DIFFICULTY_SUGGESTIONS)
                                                 .executes(ctx -> setDifficulty(ctx, parseDifficulty(ctx))))))
                         .then(CommandManager.literal("list")
-                                .executes(BCombatCommand::list))));
+                                .executes(BCombatCommand::list)))
+                .then(CommandManager.literal("debug")
+                        .executes(BCombatCommand::debugStatus)
+                        .then(CommandManager.argument("enabled", BoolArgumentType.bool())
+                                .executes(BCombatCommand::debugSet)))
+                .then(CommandManager.literal("config")
+                        .then(CommandManager.literal("reload")
+                                .executes(BCombatCommand::configReload))
+                        .then(CommandManager.literal("save")
+                                .executes(BCombatCommand::configSave))));
+    }
+
+    // ------------------------------------------------------------------
+    // debug
+    // ------------------------------------------------------------------
+
+    /** {@code /bcombat debug} — reports whether debug logging is currently enabled. */
+    private static int debugStatus(CommandContext<ServerCommandSource> ctx) {
+        boolean enabled = CombatDebugLogger.isEnabled();
+        ctx.getSource().sendFeedback(
+                () -> feedback("Debug logging is currently " + (enabled ? "ON" : "OFF")), false);
+        return enabled ? 1 : 0;
+    }
+
+    /** {@code /bcombat debug <true|false>} — toggles debug event logging on/off. */
+    private static int debugSet(CommandContext<ServerCommandSource> ctx) {
+        boolean enabled = BoolArgumentType.getBool(ctx, "enabled");
+        CombatDebugLogger.setEnabled(enabled);
+        ctx.getSource().sendFeedback(
+                () -> feedback("Debug logging " + (enabled ? "enabled" : "disabled")), true);
+        return 1;
+    }
+
+    // ------------------------------------------------------------------
+    // config
+    // ------------------------------------------------------------------
+
+    /** {@code /bcombat config reload} — re-reads config/bcombat.json and re-applies it immediately. */
+    private static int configReload(CommandContext<ServerCommandSource> ctx) {
+        BCombatConfig.reload();
+        ctx.getSource().sendFeedback(
+                () -> feedback("Combat configuration reloaded from " + BCombatConfig.getConfigPath()), true);
+        return 1;
+    }
+
+    /** {@code /bcombat config save} — writes the currently active tuning values back out to config/bcombat.json. */
+    private static int configSave(CommandContext<ServerCommandSource> ctx) {
+        BCombatConfig.save();
+        ctx.getSource().sendFeedback(
+                () -> feedback("Combat configuration saved to " + BCombatConfig.getConfigPath()), true);
+        return 1;
     }
 
     // ------------------------------------------------------------------
