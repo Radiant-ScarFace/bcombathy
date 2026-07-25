@@ -785,6 +785,36 @@ public final class CombatController {
     }
 
     // ------------------------------------------------------------------
+    // Stamina read-only accessors — the public surface AICombatController
+    // (and any future HUD) uses to make stamina-aware decisions without
+    // ever touching StaminaController directly. Mirrors the read-only
+    // accessors already exposed above for combat state, movement mode,
+    // and weapon; no new mutation entry point is added here, so stamina
+    // can still only ever change via consumeStaminaForAction/tickStamina/
+    // applyStaminaSnapshot exactly as before.
+    // ------------------------------------------------------------------
+
+    /** @return current stamina, 0..{@link #getMaxStamina()}. */
+    public double getCurrentStamina() {
+        return staminaController.getCurrentStamina();
+    }
+
+    /** @return this combatant's maximum stamina. */
+    public double getMaxStamina() {
+        return staminaController.getMaxStamina();
+    }
+
+    /** @return current stamina as a fraction (0-1) of maximum. */
+    public double getStaminaRatio() {
+        return staminaController.getStaminaRatio();
+    }
+
+    /** @return true if this combatant is currently {@link ExhaustionState#EXHAUSTED}. */
+    public boolean isExhausted() {
+        return staminaController.isExhausted();
+    }
+
+    // ------------------------------------------------------------------
     // Per-tick driver - called by CombatControllerManager
     // ------------------------------------------------------------------
 

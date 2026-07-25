@@ -1,6 +1,6 @@
 package com.bcombat.combat.controller;
 
-import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.entity.LivingEntity;
 
 import java.util.Collection;
 import java.util.Map;
@@ -8,7 +8,18 @@ import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * Registry of {@link CombatController} instances keyed by player UUID.
+ * Registry of {@link CombatController} instances keyed by combatant UUID.
+ * <p>
+ * Widened to {@link LivingEntity} (rather than {@code PlayerEntity}) so
+ * the exact same registry backs both real players and AI-controlled
+ * mobs - see {@code com.bcombat.combat.ai.AICombatController}, which
+ * calls {@link #get(LivingEntity)} for its mob exactly the way {@code
+ * CombatInputHandler} does for the local player. There is no separate
+ * "AI registry": an AI-controlled mob's {@link CombatController} lives
+ * in {@code SERVER_CONTROLLERS} next to every player's, ticked by the
+ * exact same server tick loop, resolved through the exact same {@link
+ * #getIfPresent(LivingEntity)} lookup a swing's collision outcome
+ * already uses to find a defender's controller.
  * <p>
  * Two independent registries are kept - {@code SERVER_CONTROLLERS} and
  * {@code CLIENT_CONTROLLERS} - rather than one, because a single JVM can
@@ -17,20 +28,22 @@ import java.util.concurrent.ConcurrentHashMap;
  * {@code ClientPlayerEntity}/{@code OtherClientPlayerEntity} instance for
  * the very same UUID are different objects with independent {@link
  * CombatController}s (one authoritative, one not) and must never share a
- * map entry. Which registry a given {@link PlayerEntity} belongs to is
- * derived automatically from {@code player.getWorld().isClient()}, so
- * every existing call site (which simply calls {@link #get(PlayerEntity)}
+ * map entry. Which registry a given {@link LivingEntity} belongs to is
+ * derived automatically from {@code entity.getWorld().isClient()}, so
+ * every existing call site (which simply calls {@link #get(LivingEntity)}
  * without needing to know which logical side it's running on) keeps
- * working unchanged.
+ * working unchanged. AI-controlled mobs only ever exist server-side, so
+ * they only ever populate {@code SERVER_CONTROLLERS}.
  * <p>
  * On the server, every entry is authoritative (see {@link
  * CombatController#isAuthoritative()}) - one per currently-connected
- * player. On the client, every entry is non-authoritative: the local
- * player's entry is a predictive mirror corrected by {@link
- * CombatController#applySnapshot}/{@link CombatController#applyStaminaSnapshot},
- * and every other entry is a remote player's purely network-driven
- * mirror. See {@code com.bcombat.network}'s classes for how both
- * registries are driven and kept in sync over the wire.
+ * player plus one per currently AI-driven mob. On the client, every
+ * entry is non-authoritative: the local player's entry is a predictive
+ * mirror corrected by {@link CombatController#applySnapshot}/{@link
+ * CombatController#applyStaminaSnapshot}, and every other entry is a
+ * remote player's purely network-driven mirror. See {@code
+ * com.bcombat.network}'s classes for how both registries are driven and
+ * kept in sync over the wire.
  */
 public final class CombatControllerManager {
 
@@ -42,26 +55,42 @@ public final class CombatControllerManager {
     }
 
     /**
-     * Returns the existing controller for this player, creating one if
-     * this is the first time the player has been seen on this logical
-     * side. Which registry (and therefore which {@link
+     * Returns the existing controller for this combatant, creating one
+     * if this is the first time it has been seen on this logical side.
+     * Which registry (and therefore which {@link
      * CombatController#isAuthoritative()} value) backs the returned
-     * controller is derived from {@code player.getWorld().isClient()}.
+     * controller is derived from {@code entity.getWorld().isClient()}.
+     * Works identically for a real player or an AI-controlled mob.
      */
-    public static CombatController get(PlayerEntity player) {
-        boolean serverSide = !player.getWorld().isClient();
+    public static CombatController get(LivingEntity entity) {
+        boolean serverSide = !entity.getWorld().isClient();
         Map<UUID, CombatController> registry = serverSide ? SERVER_CONTROLLERS : CLIENT_CONTROLLERS;
-        return registry.computeIfAbsent(player.getUuid(), id -> new CombatController(player, serverSide));
+        return registry.computeIfAbsent(entity.getUuid(), id -> new CombatController(entity, serverSide));
     }
 
     /**
-     * Removes a player's controller from whichever registry matches
-     * {@code player}'s logical side, e.g. on disconnect, to avoid leaking
-     * stale entries across sessions.
+     * Returns the existing controller for this combatant if one is
+     * already tracked, or {@code null} otherwise - never creates one.
+     * Used by {@link CombatController#resolveCollisionOutcome} (via its
+     * caller) to check whether a struck target has combat-framework
+     * defenses (a player, or an AI-controlled mob driven by {@code
+     * AICombatController}) without accidentally instantiating a
+     * controller for a plain vanilla mob that will never tick one.
      */
-    public static void remove(PlayerEntity player) {
-        boolean serverSide = !player.getWorld().isClient();
-        (serverSide ? SERVER_CONTROLLERS : CLIENT_CONTROLLERS).remove(player.getUuid());
+    public static CombatController getIfPresent(LivingEntity entity) {
+        boolean serverSide = !entity.getWorld().isClient();
+        Map<UUID, CombatController> registry = serverSide ? SERVER_CONTROLLERS : CLIENT_CONTROLLERS;
+        return registry.get(entity.getUuid());
+    }
+
+    /**
+     * Removes a combatant's controller from whichever registry matches
+     * its logical side, e.g. on disconnect or mob death, to avoid
+     * leaking stale entries across sessions.
+     */
+    public static void remove(LivingEntity entity) {
+        boolean serverSide = !entity.getWorld().isClient();
+        (serverSide ? SERVER_CONTROLLERS : CLIENT_CONTROLLERS).remove(entity.getUuid());
     }
 
     /** Removes a specific player's server-side authoritative controller by UUID, e.g. on disconnect. */
