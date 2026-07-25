@@ -457,4 +457,76 @@ public final class CombatEvents {
     public interface MountedStateChangedCallback {
         void onMountedStateChanged(MountedStateChangedEvent event);
     }
+
+    // ------------------------------------------------------------------
+    // Couch Lance Combat - fired exclusively by
+    // com.bcombat.combat.couch.CouchLanceController, exactly once per
+    // actual CouchState transition. See that class and CouchState's
+    // class docs for the full state-machine flow these five events mark.
+    // ------------------------------------------------------------------
+
+    public static final Event<CouchStartedCallback> COUCH_STARTED =
+            EventFactory.createArrayBacked(CouchStartedCallback.class,
+                    callbacks -> event -> {
+                        for (CouchStartedCallback callback : callbacks) {
+                            callback.onCouchStarted(event);
+                        }
+                    });
+
+    public static final Event<CouchCancelledCallback> COUCH_CANCELLED =
+            EventFactory.createArrayBacked(CouchCancelledCallback.class,
+                    callbacks -> event -> {
+                        for (CouchCancelledCallback callback : callbacks) {
+                            callback.onCouchCancelled(event);
+                        }
+                    });
+
+    public static final Event<CouchInterruptedCallback> COUCH_INTERRUPTED =
+            EventFactory.createArrayBacked(CouchInterruptedCallback.class,
+                    callbacks -> event -> {
+                        for (CouchInterruptedCallback callback : callbacks) {
+                            callback.onCouchInterrupted(event);
+                        }
+                    });
+
+    public static final Event<CouchImpactCallback> COUCH_IMPACT =
+            EventFactory.createArrayBacked(CouchImpactCallback.class,
+                    callbacks -> event -> {
+                        for (CouchImpactCallback callback : callbacks) {
+                            callback.onCouchImpact(event);
+                        }
+                    });
+
+    public static final Event<CouchRecoveredCallback> COUCH_RECOVERED =
+            EventFactory.createArrayBacked(CouchRecoveredCallback.class,
+                    callbacks -> event -> {
+                        for (CouchRecoveredCallback callback : callbacks) {
+                            callback.onCouchRecovered(event);
+                        }
+                    });
+
+    @FunctionalInterface
+    public interface CouchStartedCallback {
+        void onCouchStarted(CouchStartedEvent event);
+    }
+
+    @FunctionalInterface
+    public interface CouchCancelledCallback {
+        void onCouchCancelled(CouchCancelledEvent event);
+    }
+
+    @FunctionalInterface
+    public interface CouchInterruptedCallback {
+        void onCouchInterrupted(CouchInterruptedEvent event);
+    }
+
+    @FunctionalInterface
+    public interface CouchImpactCallback {
+        void onCouchImpact(CouchImpactEvent event);
+    }
+
+    @FunctionalInterface
+    public interface CouchRecoveredCallback {
+        void onCouchRecovered(CouchRecoveredEvent event);
+    }
 }

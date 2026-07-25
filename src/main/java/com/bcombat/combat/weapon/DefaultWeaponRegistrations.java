@@ -52,8 +52,14 @@ public final class DefaultWeaponRegistrations {
 
         // The trident is the closest vanilla analogue to a thrust-focused
         // polearm/spear, making it a convenient example for that category.
+        // Marked couch-capable so the Couch Lance Combat framework (see
+        // com.bcombat.combat.couch) has a real, in-game-equippable weapon
+        // to exercise without waiting on dedicated lance content - a
+        // mounted rider wielding a trident above COUCH_MIN_HORSE_SPEED
+        // can ready and land a couched charge exactly like any future
+        // purpose-built lance item registered the same way.
         registerAll(WeaponCategory.SPEAR,
-                properties(WeaponCategory.SPEAR).pierceDamage(5.0).build(),
+                properties(WeaponCategory.SPEAR).pierceDamage(5.0).couchCapable(true).build(),
                 Items.TRIDENT);
     }
 

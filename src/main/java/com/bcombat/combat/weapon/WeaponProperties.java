@@ -56,6 +56,7 @@ public final class WeaponProperties {
     private final double cutDamage;
     private final double pierceDamage;
     private final double bluntDamage;
+    private final boolean couchCapable;
     private final Set<GuardDirection> supportedGuardDirections;
     private final Set<AttackDirection> supportedAttackDirections;
 
@@ -75,6 +76,7 @@ public final class WeaponProperties {
         this.cutDamage = builder.cutDamage;
         this.pierceDamage = builder.pierceDamage;
         this.bluntDamage = builder.bluntDamage;
+        this.couchCapable = builder.couchCapable;
         this.supportedGuardDirections = Collections.unmodifiableSet(EnumSet.copyOf(builder.supportedGuardDirections));
         this.supportedAttackDirections = Collections.unmodifiableSet(EnumSet.copyOf(builder.supportedAttackDirections));
     }
@@ -204,6 +206,21 @@ public final class WeaponProperties {
         return bluntDamage;
     }
 
+    /**
+     * @return true if this weapon can be readied ("couched") for a
+     * Bannerlord-style mounted charge attack — see {@code
+     * com.bcombat.combat.couch.CouchLanceController} for the full
+     * eligibility/state-machine logic that reads this flag. False for
+     * every weapon by default (including {@link #unarmed()}); only a
+     * dedicated lance/spear-type registration should opt in, since a
+     * couched strike bypasses the normal wind-up entirely and deals
+     * significantly amplified damage (see {@code
+     * com.bcombat.combat.couch.CouchLanceModifiers}).
+     */
+    public boolean isCouchCapable() {
+        return couchCapable;
+    }
+
     public Set<GuardDirection> supportedGuardDirections() {
         return supportedGuardDirections;
     }
@@ -237,6 +254,7 @@ public final class WeaponProperties {
                 + ", cutDamage=" + cutDamage
                 + ", pierceDamage=" + pierceDamage
                 + ", bluntDamage=" + bluntDamage
+                + ", couchCapable=" + couchCapable
                 + '}';
     }
 
@@ -263,6 +281,7 @@ public final class WeaponProperties {
         private double cutDamage = 0.0;
         private double pierceDamage = 0.0;
         private double bluntDamage = 0.0;
+        private boolean couchCapable = false;
         private Set<GuardDirection> supportedGuardDirections = EnumSet.of(
                 GuardDirection.LEFT_GUARD, GuardDirection.RIGHT_GUARD, GuardDirection.UP_GUARD, GuardDirection.THRUST_GUARD);
         private Set<AttackDirection> supportedAttackDirections = EnumSet.of(
@@ -345,6 +364,12 @@ public final class WeaponProperties {
         /** @see WeaponProperties#bluntDamage() */
         public Builder bluntDamage(double bluntDamage) {
             this.bluntDamage = bluntDamage;
+            return this;
+        }
+
+        /** @see WeaponProperties#isCouchCapable() */
+        public Builder couchCapable(boolean couchCapable) {
+            this.couchCapable = couchCapable;
             return this;
         }
 
