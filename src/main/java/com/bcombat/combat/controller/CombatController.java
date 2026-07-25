@@ -2,15 +2,20 @@ package com.bcombat.combat.controller;
 
 import com.bcombat.combat.animation.AnimationController;
 import com.bcombat.combat.attack.AttackDirection;
+import com.bcombat.combat.block.BlockController;
+import com.bcombat.combat.block.GuardDirection;
 import com.bcombat.combat.events.AttackDirectionChangedEvent;
 import com.bcombat.combat.events.AttackPreparationCancelledEvent;
 import com.bcombat.combat.events.AttackPreparationStartedEvent;
 import com.bcombat.combat.events.AttackRecoveryStartedEvent;
 import com.bcombat.combat.events.AttackReleasedEvent;
+import com.bcombat.combat.events.BlockEndedEvent;
+import com.bcombat.combat.events.BlockStartedEvent;
 import com.bcombat.combat.events.CombatEnterEvent;
 import com.bcombat.combat.events.CombatEvents;
 import com.bcombat.combat.events.CombatExitEvent;
 import com.bcombat.combat.events.CombatStateChangedEvent;
+import com.bcombat.combat.events.GuardDirectionChangedEvent;
 import com.bcombat.combat.events.MovementModeChangedEvent;
 import com.bcombat.combat.movement.MovementMode;
 import com.bcombat.combat.movement.MovementModifierManager;
@@ -36,6 +41,7 @@ public final class CombatController {
     private final CombatStateManager stateManager = new CombatStateManager();
     private final MovementModifierManager movementModifierManager = new MovementModifierManager();
     private final AnimationController animationController = new AnimationController();
+    private final BlockController blockController = new BlockController();
 
     private MovementMode movementMode = MovementMode.NORMAL;
     private int transitionTicksRemaining = 0;
@@ -160,6 +166,55 @@ public final class CombatController {
         nextAttackBuffered = true;
     }
 
+    /**
+     * Requests the player begin entering a block. Only succeeds from
+     * {@code COMBAT_IDLE} — attempting to block while winding up or
+     * recovering from an attack is a no-op, exactly like the reverse
+     * (attempting to attack while blocking) is a no-op in {@link
+     * #requestPrepareAttack()}. Since only one {@code CombatState} is
+     * ever active at a time, this mutual exclusion falls directly out of
+     * the state machine and needs no extra bookkeeping here.
+     */
+    public void requestEnterBlock() {
+        stateManager.transitionTo(CombatState.ENTER_BLOCK);
+    }
+
+    /**
+     * Requests the player begin exiting a block. No-op unless currently
+     * in {@code ENTER_BLOCK} or {@code BLOCK_IDLE}. Uses {@code
+     * forceTransitionTo} the same way {@link #requestExitCombat()} does,
+     * so releasing the block key always works even mid-way through the
+     * enter transition.
+     */
+    public void requestExitBlock() {
+        CombatState current = stateManager.getCurrentState();
+        if (current != CombatState.ENTER_BLOCK && current != CombatState.BLOCK_IDLE) {
+            return;
+        }
+        stateManager.forceTransitionTo(CombatState.EXIT_BLOCK);
+    }
+
+    /**
+     * Proposes a new guard direction, as resolved from mouse movement by
+     * the client-side guard direction tracker. No-op outside {@code
+     * ENTER_BLOCK}/{@code BLOCK_IDLE}. Delegates the accept/reject
+     * decision to {@link BlockController#requestDirection}, and fires
+     * {@link GuardDirectionChangedEvent} only when the proposal is
+     * actually accepted, so listeners never see redundant events.
+     */
+    public void updateGuardDirection(GuardDirection proposed) {
+        CombatState current = stateManager.getCurrentState();
+        if (current != CombatState.ENTER_BLOCK && current != CombatState.BLOCK_IDLE) {
+            return;
+        }
+
+        GuardDirection previous = blockController.getCurrentDirection();
+        if (blockController.requestDirection(proposed)) {
+            CombatEvents.GUARD_DIRECTION_CHANGED.invoker()
+                    .onGuardDirectionChanged(new GuardDirectionChangedEvent(player, previous, blockController.getCurrentDirection()));
+        }
+    }
+
     public CombatState getCombatState() {
         return stateManager.getCurrentState();
     }
@@ -182,6 +237,10 @@ public final class CombatController {
         return attackDirection;
     }
 
+    public GuardDirection getGuardDirection() {
+        return blockController.getCurrentDirection();
+    }
+
     // ------------------------------------------------------------------
     // Per-tick driver - called by CombatControllerManager
     // ------------------------------------------------------------------
@@ -195,7 +254,8 @@ public final class CombatController {
         applyGuardConditions();
         advanceTransitionTimers();
         movementModifierManager.tick(player);
-        animationController.tick(player, stateManager.getCurrentState(), movementMode, attackDirection);
+        blockController.tick();
+        animationController.tick(player, stateManager.getCurrentState(), movementMode, attackDirection, blockController.getCurrentDirection());
     }
 
     private void applyGuardConditions() {
@@ -253,6 +313,18 @@ public final class CombatController {
             } else {
                 transitionTicksRemaining--;
             }
+        } else if (current == CombatState.ENTER_BLOCK) {
+            if (transitionTicksRemaining <= 0) {
+                stateManager.transitionTo(CombatState.BLOCK_IDLE);
+            } else {
+                transitionTicksRemaining--;
+            }
+        } else if (current == CombatState.EXIT_BLOCK) {
+            if (transitionTicksRemaining <= 0) {
+                stateManager.transitionTo(CombatState.COMBAT_IDLE);
+            } else {
+                transitionTicksRemaining--;
+            }
         }
     }
 
@@ -294,6 +366,7 @@ public final class CombatController {
             setMovementMode(MovementMode.NORMAL);
             movementModifierManager.disableCombatMovement(player);
             nextAttackBuffered = false;
+            blockController.reset();
         }
 
         if (current == CombatState.PREPARING_ATTACK) {
@@ -314,11 +387,25 @@ public final class CombatController {
                     .onAttackRecoveryStarted(new AttackRecoveryStartedEvent(player));
         }
 
+        if (current == CombatState.ENTER_BLOCK) {
+            transitionTicksRemaining = CombatConstants.ENTER_BLOCK_TRANSITION_TICKS;
+            blockController.reset();
+            CombatEvents.BLOCK_STARTED.invoker().onBlockStarted(new BlockStartedEvent(player));
+        }
+
+        if (current == CombatState.EXIT_BLOCK) {
+            transitionTicksRemaining = CombatConstants.EXIT_BLOCK_TRANSITION_TICKS;
+            CombatEvents.BLOCK_ENDED.invoker().onBlockEnded(new BlockEndedEvent(player));
+        }
+
         if (current == CombatState.COMBAT_IDLE) {
             // Covers arrival from ENTERING_COMBAT, RECOVERY, a cancelled
             // wind-up, or a resolved feint - direction never carries over
             // into the next wind-up.
             attackDirection = AttackDirection.NONE;
+            // Covers arrival from a completed EXIT_BLOCK the same way -
+            // guard direction never carries over into the next block.
+            blockController.reset();
         }
     }
 

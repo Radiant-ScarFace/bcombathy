@@ -35,7 +35,7 @@ public enum CombatState {
     COMBAT_IDLE {
         @Override
         public Set<CombatState> allowedNextStates() {
-            return EnumSet.of(PREPARING_ATTACK, BLOCKING, EXITING_COMBAT);
+            return EnumSet.of(PREPARING_ATTACK, ENTER_BLOCK, EXITING_COMBAT);
         }
     },
 
@@ -63,11 +63,27 @@ public enum CombatState {
         }
     },
 
-    /** Reserved for the future blocking system. */
-    BLOCKING {
+    /** Transitional state while the block stance/animation is engaging. */
+    ENTER_BLOCK {
         @Override
         public Set<CombatState> allowedNextStates() {
-            return EnumSet.of(CHAMBER, COMBAT_IDLE);
+            return EnumSet.of(BLOCK_IDLE, EXIT_BLOCK);
+        }
+    },
+
+    /** Idle, held guard. The resting state while actively blocking. */
+    BLOCK_IDLE {
+        @Override
+        public Set<CombatState> allowedNextStates() {
+            return EnumSet.of(CHAMBER, EXIT_BLOCK);
+        }
+    },
+
+    /** Transitional state while the block stance/animation is disengaging. */
+    EXIT_BLOCK {
+        @Override
+        public Set<CombatState> allowedNextStates() {
+            return EnumSet.of(COMBAT_IDLE);
         }
     },
 

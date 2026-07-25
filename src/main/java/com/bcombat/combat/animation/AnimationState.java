@@ -2,9 +2,10 @@ package com.bcombat.combat.animation;
 
 /**
  * Every generic locomotion animation state supported in this phase, plus
- * the directional attack wind-up/release states and generic recovery.
- * Block, feint, and chamber animations are not declared here yet — those
- * belong to future systems and will extend this enum when built.
+ * the directional attack wind-up/release states, the directional block
+ * states, and generic recovery. Feint and chamber animations are not
+ * declared here yet — those belong to future systems and will extend
+ * this enum when built.
  */
 public enum AnimationState {
     IDLE,
@@ -30,5 +31,14 @@ public enum AnimationState {
     RELEASE_OVERHEAD,
     RELEASE_THRUST,
 
-    RECOVERY
+    RECOVERY,
+
+    ENTER_BLOCK,
+    BLOCK_IDLE,
+    EXIT_BLOCK,
+
+    GUARD_LEFT,
+    GUARD_RIGHT,
+    GUARD_UP,
+    GUARD_THRUST
 }

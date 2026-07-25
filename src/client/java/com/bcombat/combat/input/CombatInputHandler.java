@@ -11,19 +11,31 @@ import net.minecraft.client.MinecraftClient;
  * Contains zero combat logic itself: it does not decide whether a
  * transition is legal, it only calls {@code requestEnterCombat()} /
  * {@code requestExitCombat()} / {@code requestPrepareAttack()} / {@code
- * releaseAttack()} and lets {@link CombatController} decide.
+ * releaseAttack()} / {@code requestEnterBlock()} / {@code
+ * requestExitBlock()} / {@code updateGuardDirection()} and lets {@link
+ * CombatController} decide.
  * <p>
  * Attack input reuses vanilla's {@code attackKey} binding (left click by
  * default, but respects rebinds) rather than a new keybinding, and is
  * only forwarded while the player is in Combat Mode
  * ({@code COMBAT_IDLE}/{@code PREPARING_ATTACK}) — outside combat mode,
- * vanilla's own attack handling is left completely alone.
+ * vanilla's own attack handling is left completely alone. Block input
+ * uses the dedicated {@link CombatKeyBindings#block} keybinding, since
+ * blocking has no vanilla equivalent to reuse the way attacking does.
+ * <p>
+ * Attack and block cannot both be active at once: entering either only
+ * ever succeeds from {@code COMBAT_IDLE}, and the state machine only
+ * ever occupies one {@code CombatState} at a time, so this handler needs
+ * no extra bookkeeping to keep the two mutually exclusive — it falls
+ * directly out of {@link CombatController}'s guard checks.
  */
 public final class CombatInputHandler {
 
     private boolean wasCombatKeyDown = false;
     private boolean wasAttackKeyDown = false;
+    private boolean wasBlockKeyDown = false;
     private final AttackDirectionTracker attackDirectionTracker = new AttackDirectionTracker();
+    private final GuardDirectionTracker guardDirectionTracker = new GuardDirectionTracker();
 
     private CombatInputHandler() {
     }
@@ -40,7 +52,9 @@ public final class CombatInputHandler {
         if (client.player == null) {
             wasCombatKeyDown = false;
             wasAttackKeyDown = false;
+            wasBlockKeyDown = false;
             attackDirectionTracker.end();
+            guardDirectionTracker.end();
             return;
         }
 
@@ -56,6 +70,7 @@ public final class CombatInputHandler {
         wasCombatKeyDown = isCombatKeyDown;
 
         handleAttackInput(client, controller);
+        handleBlockInput(client, controller);
 
         controller.tick();
     }
@@ -107,5 +122,39 @@ public final class CombatInputHandler {
         }
 
         wasAttackKeyDown = isAttackKeyDown;
+    }
+
+    private void handleBlockInput(MinecraftClient client, CombatController controller) {
+        CombatState state = controller.getCombatState();
+
+        // Entering a block only ever succeeds from COMBAT_IDLE (see
+        // CombatController#requestEnterBlock), so pressing the block key
+        // while winding up, attacking, or recovering is silently ignored,
+        // exactly like pressing attack while already blocking is.
+        boolean isBlockKeyDown = CombatKeyBindings.block.isPressed();
+
+        if (isBlockKeyDown && !wasBlockKeyDown && state == CombatState.COMBAT_IDLE) {
+            controller.requestEnterBlock();
+            if (controller.getCombatState() == CombatState.ENTER_BLOCK) {
+                guardDirectionTracker.begin(client.player);
+            }
+        } else if (!isBlockKeyDown && wasBlockKeyDown
+                && (state == CombatState.ENTER_BLOCK || state == CombatState.BLOCK_IDLE)) {
+            controller.requestExitBlock();
+            guardDirectionTracker.end();
+        }
+
+        // Re-read state: the branch above may have just transitioned
+        // COMBAT_IDLE -> ENTER_BLOCK this same tick, and the tracker's
+        // begin() call needs to be followed by a resolve() this same
+        // tick rather than one tick later.
+        state = controller.getCombatState();
+        if (state == CombatState.ENTER_BLOCK || state == CombatState.BLOCK_IDLE) {
+            controller.updateGuardDirection(guardDirectionTracker.resolve(client.player));
+        } else {
+            guardDirectionTracker.end();
+        }
+
+        wasBlockKeyDown = isBlockKeyDown;
     }
 }

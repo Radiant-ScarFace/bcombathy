@@ -1,6 +1,7 @@
 package com.bcombat.combat.animation;
 
 import com.bcombat.combat.attack.AttackDirection;
+import com.bcombat.combat.block.GuardDirection;
 import com.bcombat.combat.movement.MovementMode;
 import com.bcombat.combat.state.CombatState;
 import com.bcombat.combat.util.CombatConstants;
@@ -25,13 +26,13 @@ public final class AnimationController {
      * Recomputes the target animation state from current combat state and
      * player physics, and advances the blend. Must be called once per tick.
      */
-    public void tick(PlayerEntity player, CombatState combatState, MovementMode movementMode, AttackDirection attackDirection) {
-        AnimationState target = resolveTargetState(player, combatState, movementMode, attackDirection);
+    public void tick(PlayerEntity player, CombatState combatState, MovementMode movementMode, AttackDirection attackDirection, GuardDirection guardDirection) {
+        AnimationState target = resolveTargetState(player, combatState, movementMode, attackDirection, guardDirection);
         blender.setTargetState(target);
         blender.tick();
     }
 
-    private AnimationState resolveTargetState(PlayerEntity player, CombatState combatState, MovementMode movementMode, AttackDirection attackDirection) {
+    private AnimationState resolveTargetState(PlayerEntity player, CombatState combatState, MovementMode movementMode, AttackDirection attackDirection, GuardDirection guardDirection) {
         if (combatState == CombatState.ENTERING_COMBAT) {
             return AnimationState.ENTER_COMBAT;
         }
@@ -46,6 +47,15 @@ public final class AnimationController {
         }
         if (combatState == CombatState.RECOVERY) {
             return AnimationState.RECOVERY;
+        }
+        if (combatState == CombatState.ENTER_BLOCK) {
+            return AnimationState.ENTER_BLOCK;
+        }
+        if (combatState == CombatState.EXIT_BLOCK) {
+            return AnimationState.EXIT_BLOCK;
+        }
+        if (combatState == CombatState.BLOCK_IDLE) {
+            return guardStateFor(guardDirection);
         }
 
         boolean inCombat = movementMode == MovementMode.COMBAT;
@@ -89,6 +99,22 @@ public final class AnimationController {
             case RIGHT_SLASH -> AnimationState.RELEASE_RIGHT;
             case OVERHEAD -> AnimationState.RELEASE_OVERHEAD;
             case THRUST, NONE -> AnimationState.RELEASE_THRUST;
+        };
+    }
+
+    /**
+     * Maps a locked guard direction to its pose. {@code NONE} falls back
+     * to the neutral {@code BLOCK_IDLE} pose — the player has raised their
+     * guard but hasn't moved the mouse past the deadzone yet to commit to
+     * a side.
+     */
+    private static AnimationState guardStateFor(GuardDirection direction) {
+        return switch (direction) {
+            case LEFT_GUARD -> AnimationState.GUARD_LEFT;
+            case RIGHT_GUARD -> AnimationState.GUARD_RIGHT;
+            case UP_GUARD -> AnimationState.GUARD_UP;
+            case THRUST_GUARD -> AnimationState.GUARD_THRUST;
+            case NONE -> AnimationState.BLOCK_IDLE;
         };
     }
 

@@ -88,6 +88,30 @@ public final class CombatEvents {
                         }
                     });
 
+    public static final Event<BlockStartedCallback> BLOCK_STARTED =
+            EventFactory.createArrayBacked(BlockStartedCallback.class,
+                    callbacks -> event -> {
+                        for (BlockStartedCallback callback : callbacks) {
+                            callback.onBlockStarted(event);
+                        }
+                    });
+
+    public static final Event<BlockEndedCallback> BLOCK_ENDED =
+            EventFactory.createArrayBacked(BlockEndedCallback.class,
+                    callbacks -> event -> {
+                        for (BlockEndedCallback callback : callbacks) {
+                            callback.onBlockEnded(event);
+                        }
+                    });
+
+    public static final Event<GuardDirectionChangedCallback> GUARD_DIRECTION_CHANGED =
+            EventFactory.createArrayBacked(GuardDirectionChangedCallback.class,
+                    callbacks -> event -> {
+                        for (GuardDirectionChangedCallback callback : callbacks) {
+                            callback.onGuardDirectionChanged(event);
+                        }
+                    });
+
     @FunctionalInterface
     public interface CombatEnterCallback {
         void onCombatEnter(CombatEnterEvent event);
@@ -131,5 +155,20 @@ public final class CombatEvents {
     @FunctionalInterface
     public interface AttackDirectionChangedCallback {
         void onAttackDirectionChanged(AttackDirectionChangedEvent event);
+    }
+
+    @FunctionalInterface
+    public interface BlockStartedCallback {
+        void onBlockStarted(BlockStartedEvent event);
+    }
+
+    @FunctionalInterface
+    public interface BlockEndedCallback {
+        void onBlockEnded(BlockEndedEvent event);
+    }
+
+    @FunctionalInterface
+    public interface GuardDirectionChangedCallback {
+        void onGuardDirectionChanged(GuardDirectionChangedEvent event);
     }
 }

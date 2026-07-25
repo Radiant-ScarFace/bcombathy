@@ -116,4 +116,52 @@ public final class CombatConstants {
      * Not yet consumed by {@code AttackDirectionTracker}.
      */
     public static final float ATTACK_MOUSE_SENSITIVITY_THRESHOLD = 2.0f;
+
+    // ------------------------------------------------------------------
+    // Block: transition timing (in ticks)
+    // ------------------------------------------------------------------
+
+    /** Ticks spent in ENTER_BLOCK before the state machine reaches BLOCK_IDLE. */
+    public static final int ENTER_BLOCK_TRANSITION_TICKS = 5;
+
+    /** Ticks spent in EXIT_BLOCK before the state machine returns to COMBAT_IDLE. */
+    public static final int EXIT_BLOCK_TRANSITION_TICKS = 5;
+
+    // ------------------------------------------------------------------
+    // Block: guard direction detection
+    // ------------------------------------------------------------------
+
+    /**
+     * Minimum combined look-direction deviation (in degrees, yaw or
+     * pitch) since block began before a direction other than
+     * {@code GuardDirection.NONE} is proposed. Kept as its own constant
+     * rather than reusing {@link #ATTACK_DIRECTION_DEADZONE_DEGREES}
+     * since block and attack direction detection are tuned independently.
+     */
+    public static final float GUARD_DIRECTION_DEADZONE_DEGREES = 5.0f;
+
+    /**
+     * Multiplier applied to raw yaw/pitch deviation before deadzone and
+     * direction classification. Values above 1.0 make guard direction
+     * detection more sensitive to small mouse movements; values below
+     * 1.0 require larger movements before a direction registers.
+     */
+    public static final float GUARD_DIRECTION_SENSITIVITY = 1.0f;
+
+    /**
+     * Minimum ticks that must elapse after an accepted guard direction
+     * change before another change is accepted. Does not delay the
+     * initial lock when block is first entered (from {@code NONE}) —
+     * only subsequent switches away from an already-locked direction.
+     * This is what prevents small mouse jitter near a directional
+     * boundary from rapidly flipping the guard.
+     */
+    public static final int GUARD_SWITCH_DELAY_TICKS = 4;
+
+    /**
+     * Reserved for the future perfect-block system: the window, in ticks,
+     * around an incoming hit during which a correctly-directed block
+     * counts as a perfect block. Unused until hit detection exists.
+     */
+    public static final int PERFECT_BLOCK_WINDOW_TICKS_RESERVED = 4;
 }
