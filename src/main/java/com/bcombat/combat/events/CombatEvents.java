@@ -168,6 +168,38 @@ public final class CombatEvents {
                         }
                     });
 
+    public static final Event<CollisionDetectedCallback> COLLISION_DETECTED =
+            EventFactory.createArrayBacked(CollisionDetectedCallback.class,
+                    callbacks -> event -> {
+                        for (CollisionDetectedCallback callback : callbacks) {
+                            callback.onCollisionDetected(event);
+                        }
+                    });
+
+    public static final Event<AttackHitCallback> ATTACK_HIT =
+            EventFactory.createArrayBacked(AttackHitCallback.class,
+                    callbacks -> event -> {
+                        for (AttackHitCallback callback : callbacks) {
+                            callback.onAttackHit(event);
+                        }
+                    });
+
+    public static final Event<AttackMissCallback> ATTACK_MISS =
+            EventFactory.createArrayBacked(AttackMissCallback.class,
+                    callbacks -> event -> {
+                        for (AttackMissCallback callback : callbacks) {
+                            callback.onAttackMiss(event);
+                        }
+                    });
+
+    public static final Event<AttackBlockedCallback> ATTACK_BLOCKED =
+            EventFactory.createArrayBacked(AttackBlockedCallback.class,
+                    callbacks -> event -> {
+                        for (AttackBlockedCallback callback : callbacks) {
+                            callback.onAttackBlocked(event);
+                        }
+                    });
+
     @FunctionalInterface
     public interface CombatEnterCallback {
         void onCombatEnter(CombatEnterEvent event);
@@ -261,5 +293,25 @@ public final class CombatEvents {
     @FunctionalInterface
     public interface WeaponChangedCallback {
         void onWeaponChanged(WeaponChangedEvent event);
+    }
+
+    @FunctionalInterface
+    public interface CollisionDetectedCallback {
+        void onCollisionDetected(CollisionDetectedEvent event);
+    }
+
+    @FunctionalInterface
+    public interface AttackHitCallback {
+        void onAttackHit(AttackHitEvent event);
+    }
+
+    @FunctionalInterface
+    public interface AttackMissCallback {
+        void onAttackMiss(AttackMissEvent event);
+    }
+
+    @FunctionalInterface
+    public interface AttackBlockedCallback {
+        void onAttackBlocked(AttackBlockedEvent event);
     }
 }

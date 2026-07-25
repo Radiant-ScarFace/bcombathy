@@ -220,4 +220,113 @@ public final class CombatConstants {
      * weapon stats exist; kept at 1.0 (no change).
      */
     public static final double DEFAULT_DEFENSE_TIMING_MODIFIER = 1.0;
+
+    // ------------------------------------------------------------------
+    // Collision & hit detection. All timing here is measured against
+    // ticks elapsed since CombatState.ATTACKING (the release phase) was
+    // entered; all distance/angle values are read by
+    // com.bcombat.combat.collision.CollisionDetector. Weapon reach
+    // itself is never hardcoded here — it always comes from the
+    // equipped weapon's WeaponProperties#reach(); only the *modifier*
+    // applied on top of that reach, and the fixed detection tolerance,
+    // are configured in this class.
+    // ------------------------------------------------------------------
+
+    /**
+     * Fraction (0-1) of the {@code ATTACKING} state's weapon-scaled
+     * duration at which the collision detection window opens. Kept
+     * below 1.0 alongside {@link #COLLISION_WINDOW_END_RATIO} so the
+     * check only runs during the "business end" of the swing rather
+     * than the very first frame of the animation, before the weapon
+     * would plausibly have reached anything.
+     */
+    public static final float COLLISION_WINDOW_START_RATIO = 0.25f;
+
+    /**
+     * Fraction (0-1) of the {@code ATTACKING} state's weapon-scaled
+     * duration at which the collision detection window closes. If no
+     * target is found by this point, the swing resolves as a miss. Must
+     * be greater than or equal to {@link #COLLISION_WINDOW_START_RATIO}.
+     */
+    public static final float COLLISION_WINDOW_END_RATIO = 0.75f;
+
+    /**
+     * Extra distance, in blocks, added on top of a weapon's effective
+     * reach before a target is considered out of range. Accounts for
+     * hitbox/collision-check imprecision (bounding-box centers vs.
+     * actual model surfaces) so a swing that should plausibly connect
+     * isn't rejected by a hairline distance difference.
+     */
+    public static final double COLLISION_REACH_TOLERANCE = 0.5;
+
+    /**
+     * Half-angle, in degrees, of the forward cone (measured from the
+     * attacker's look direction) within which a target may be struck.
+     * A target directly ahead is at 0 degrees; a target directly beside
+     * the attacker is at 90 degrees.
+     */
+    public static final double COLLISION_CONE_HALF_ANGLE_DEGREES = 60.0;
+
+    /**
+     * Global multiplier applied to every weapon's {@code
+     * WeaponProperties#reach()} before collision range is computed.
+     * Reserved as a single future-config/balance knob (e.g. a server
+     * config toggling all reach up or down) that doesn't require
+     * touching every individual weapon registration. Kept at 1.0 (no
+     * change) until such configuration exists.
+     */
+    public static final double DEFAULT_WEAPON_REACH_MODIFIER = 1.0;
+
+    /**
+     * Minimum vertical-placement fraction (0 = target's feet, 1 = the
+     * top of its hitbox) for a hit to classify as {@code
+     * HitLocation.HEAD}. See {@code CollisionDetector#classifyHitLocation}.
+     */
+    public static final double HEAD_HITBOX_HEIGHT_RATIO = 0.85;
+
+    /**
+     * Maximum vertical-placement fraction for a hit to classify as
+     * {@code HitLocation.LEGS}. Everything between this and {@link
+     * #HEAD_HITBOX_HEIGHT_RATIO} is torso-height and further split into
+     * {@code TORSO}/{@code ARMS} by {@link #ARM_HITBOX_WIDTH_RATIO}.
+     */
+    public static final double LEG_HITBOX_HEIGHT_RATIO = 0.35;
+
+    /**
+     * Minimum lateral offset from the attacker's look line — normalized
+     * by half the target's hitbox width, where 0 is dead-center and 1
+     * is the target's silhouette edge — for a torso-height hit to
+     * classify as {@code HitLocation.ARMS} instead of {@code TORSO}.
+     */
+    public static final double ARM_HITBOX_WIDTH_RATIO = 0.55;
+
+    /**
+     * Vertical-placement bias applied for {@code AttackDirection.OVERHEAD}
+     * strikes when estimating hit location — an overhead strike lands
+     * higher on the target than the attacker's raw eye-height alone
+     * would suggest.
+     */
+    public static final double OVERHEAD_HIT_HEIGHT_BIAS = 0.15;
+
+    /**
+     * Vertical-placement bias applied for {@code AttackDirection.LEFT_SLASH}/
+     * {@code RIGHT_SLASH} strikes when estimating hit location — a
+     * horizontal slash lands slightly lower than a neutral thrust.
+     */
+    public static final double SLASH_HIT_HEIGHT_BIAS = -0.05;
+
+    /**
+     * Vertical-placement bias applied for {@code AttackDirection.THRUST}
+     * (and {@code NONE}) strikes when estimating hit location. Zero —
+     * the neutral baseline the other directions bias away from.
+     */
+    public static final double THRUST_HIT_HEIGHT_BIAS = 0.0;
+
+    /**
+     * Reserved multiplier for a future dedicated body-hitbox phase to
+     * scale detection tolerance per body region (e.g. a narrower
+     * effective hitbox for a called head-shot mechanic). Unused until
+     * that phase exists; kept at 1.0 (no change).
+     */
+    public static final double DEFAULT_BODY_HITBOX_MODIFIER = 1.0;
 }

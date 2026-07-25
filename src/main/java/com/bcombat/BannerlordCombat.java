@@ -1,5 +1,7 @@
 package com.bcombat;
 
+import com.bcombat.combat.weapon.DefaultWeaponRegistrations;
+
 import net.fabricmc.api.ModInitializer;
 
 import net.minecraft.util.Identifier;
@@ -20,6 +22,14 @@ public class BannerlordCombat implements ModInitializer {
 		// This code runs as soon as Minecraft is in a mod-load-ready state.
 		// However, some things (like resources) may still be uninitialized.
 		// Proceed with mild caution.
+
+		// Registers the example vanilla-item weapon mappings so the weapon
+		// framework (WeaponRegistry/WeaponController/CombatController) is
+		// exercisable in-game. Common-side (not client-only) since weapon
+		// resolution in CombatController is written to run server-side too
+		// once networking exists. See DefaultWeaponRegistrations' javadoc
+		// for why these are placeholder/example stats, not balancing.
+		DefaultWeaponRegistrations.register();
 
 		LOGGER.info("Hello Fabric world!");
 	}

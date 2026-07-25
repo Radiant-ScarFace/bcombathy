@@ -5,10 +5,18 @@ import com.bcombat.combat.attack.AttackDirection;
 import com.bcombat.combat.attack.ChamberController;
 import com.bcombat.combat.block.BlockController;
 import com.bcombat.combat.block.GuardDirection;
+import com.bcombat.combat.collision.CollisionController;
+import com.bcombat.combat.collision.CollisionDetector;
+import com.bcombat.combat.collision.CollisionOutcome;
+import com.bcombat.combat.collision.HitLocation;
+import com.bcombat.combat.collision.HitResult;
 import com.bcombat.combat.defense.DefenseResult;
 import com.bcombat.combat.defense.DirectionCompatibility;
 import com.bcombat.combat.defense.IncomingAttack;
+import com.bcombat.combat.events.AttackBlockedEvent;
 import com.bcombat.combat.events.AttackDirectionChangedEvent;
+import com.bcombat.combat.events.AttackHitEvent;
+import com.bcombat.combat.events.AttackMissEvent;
 import com.bcombat.combat.events.AttackPreparationCancelledEvent;
 import com.bcombat.combat.events.AttackPreparationStartedEvent;
 import com.bcombat.combat.events.AttackRecoveryStartedEvent;
@@ -17,6 +25,7 @@ import com.bcombat.combat.events.BlockEndedEvent;
 import com.bcombat.combat.events.BlockStartedEvent;
 import com.bcombat.combat.events.ChamberStartedEvent;
 import com.bcombat.combat.events.ChamberSucceededEvent;
+import com.bcombat.combat.events.CollisionDetectedEvent;
 import com.bcombat.combat.events.CombatEnterEvent;
 import com.bcombat.combat.events.CombatEvents;
 import com.bcombat.combat.events.CombatExitEvent;
@@ -37,6 +46,7 @@ import com.bcombat.combat.state.CombatStateManager;
 import com.bcombat.combat.util.CombatConstants;
 import com.bcombat.combat.weapon.WeaponController;
 import com.bcombat.combat.weapon.WeaponProperties;
+import net.minecraft.entity.LivingEntity;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.item.Item;
 
@@ -61,6 +71,7 @@ public final class CombatController {
     private final BlockController blockController = new BlockController();
     private final ChamberController chamberController = new ChamberController();
     private final WeaponController weaponController = new WeaponController();
+    private final CollisionController collisionController = new CollisionController();
 
     private MovementMode movementMode = MovementMode.NORMAL;
     private int transitionTicksRemaining = 0;
@@ -69,6 +80,15 @@ public final class CombatController {
     private int windUpTicksElapsed = 0;
     private boolean releaseBuffered = false;
     private boolean nextAttackBuffered = false;
+
+    /**
+     * The weapon-scaled duration, in ticks, of the current (or most
+     * recent) {@code ATTACKING} state — the same value used both for
+     * {@code transitionTicksRemaining}'s countdown and to size {@link
+     * CollisionController}'s detection window, so the collision window
+     * automatically tracks weapon speed with no separate constant.
+     */
+    private int attackingDurationTicks = 0;
 
     /**
      * Identity of the last {@link IncomingAttack} this controller resolved
@@ -393,6 +413,49 @@ public final class CombatController {
         }
     }
 
+    /**
+     * Turns one attack's resolved {@link CollisionOutcome} into the
+     * appropriate event(s). A found target does not automatically mean a
+     * confirmed hit: if it's a {@link PlayerEntity} currently able to
+     * defend, this reuses {@link #notifyIncomingAttack} exactly the way
+     * a real hit-detection system is documented to — with the collision
+     * itself as the instant of impact ({@code ticksUntilImpact == 0}) —
+     * so Perfect Block/Parry/Chamber intercept this attack the same way
+     * they already intercept {@code DefenseTestSimulator}'s simulated
+     * ones. A successful interception fires {@link AttackBlockedEvent}
+     * and skips {@link AttackHitEvent} entirely, per the requirement
+     * that a blocked attack never also confirms as a hit.
+     */
+    private void resolveCollisionOutcome(CollisionOutcome outcome) {
+        Item weaponItem = weaponController.getCurrentItem();
+        WeaponProperties weapon = weaponController.getCurrentWeapon();
+        long worldTime = player.getWorld().getTime();
+
+        if (!outcome.hasTarget()) {
+            HitResult result = HitResult.miss(player, weaponItem, weapon, attackDirection, outcome.ticksIntoAttack(), worldTime);
+            CombatEvents.ATTACK_MISS.invoker().onAttackMiss(new AttackMissEvent(result));
+            return;
+        }
+
+        LivingEntity target = outcome.target();
+        CombatEvents.COLLISION_DETECTED.invoker()
+                .onCollisionDetected(new CollisionDetectedEvent(player, target, attackDirection, weaponItem));
+
+        if (target instanceof PlayerEntity targetPlayer) {
+            CombatController defenderController = CombatControllerManager.get(targetPlayer);
+            DefenseResult defenseResult = defenderController.notifyIncomingAttack(new IncomingAttack(player, attackDirection, 0));
+            if (defenseResult != DefenseResult.NONE) {
+                HitResult result = HitResult.blocked(player, target, weaponItem, weapon, attackDirection, defenseResult, outcome.ticksIntoAttack(), worldTime);
+                CombatEvents.ATTACK_BLOCKED.invoker().onAttackBlocked(new AttackBlockedEvent(result));
+                return;
+            }
+        }
+
+        HitLocation hitLocation = CollisionDetector.classifyHitLocation(player, target, attackDirection);
+        HitResult result = HitResult.hit(player, target, weaponItem, weapon, attackDirection, hitLocation, outcome.ticksIntoAttack(), worldTime);
+        CombatEvents.ATTACK_HIT.invoker().onAttackHit(new AttackHitEvent(result));
+    }
+
     public CombatState getCombatState() {
         return stateManager.getCurrentState();
     }
@@ -453,7 +516,22 @@ public final class CombatController {
         advanceTransitionTimers();
         movementModifierManager.tick(player);
         blockController.tick();
+        tickCollision();
         animationController.tick(player, stateManager.getCurrentState(), movementMode, attackDirection, blockController.getCurrentDirection());
+    }
+
+    /**
+     * Polls the active collision window, if any, while {@code
+     * CombatState.ATTACKING} is current. See {@link CollisionController}
+     * for why detection is windowed rather than checked every tick of
+     * the release phase.
+     */
+    private void tickCollision() {
+        if (stateManager.getCurrentState() != CombatState.ATTACKING) {
+            return;
+        }
+        collisionController.tick(player, weaponController.getCurrentWeapon().reach())
+                .ifPresent(this::resolveCollisionOutcome);
     }
 
     /**
@@ -624,8 +702,13 @@ public final class CombatController {
      * wind-up duration has elapsed.
      */
     private void beginAttackRelease() {
+        // Computed before the transition (rather than after, like other
+        // states' durations) since onStateTransition's ATTACKING branch
+        // needs this value the instant the transition fires, to size
+        // CollisionController's detection window.
+        attackingDurationTicks = effectiveReleaseTicks();
         if (stateManager.transitionTo(CombatState.ATTACKING)) {
-            transitionTicksRemaining = effectiveReleaseTicks();
+            transitionTicksRemaining = attackingDurationTicks;
             releaseBuffered = false;
             CombatEvents.ATTACK_RELEASED.invoker()
                     .onAttackReleased(new AttackReleasedEvent(player, attackDirection));
@@ -669,6 +752,19 @@ public final class CombatController {
             // for that specific branch, so this is the single place that
             // guarantees the penalty never outlives PREPARING_ATTACK.
             movementModifierManager.disableWindUpPenalty(player);
+        }
+
+        if (current == CombatState.ATTACKING) {
+            // Collision checks only ever run during the release phase
+            // (ATTACKING) - see CollisionController's class docs.
+            collisionController.beginWindow(attackingDurationTicks);
+        } else if (previous == CombatState.ATTACKING) {
+            // Guarantees every attack resolves to a hit/blocked/miss
+            // outcome even if ATTACKING's duration is short enough that
+            // tick() never gets a chance to close the window itself;
+            // a no-op if tick() already resolved it naturally.
+            collisionController.forceResolve().ifPresent(this::resolveCollisionOutcome);
+            collisionController.reset();
         }
 
         if (current == CombatState.RECOVERY) {
