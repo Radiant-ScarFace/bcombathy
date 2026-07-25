@@ -32,16 +32,19 @@ public final class MovementModifierManager {
     private static final Identifier WALK_MODIFIER_ID = new Identifier("bcombat", "combat_walk_speed");
     private static final Identifier SPRINT_MODIFIER_ID = new Identifier("bcombat", "combat_sprint_speed");
     private static final Identifier WIND_UP_MODIFIER_ID = new Identifier("bcombat", "attack_wind_up_speed");
+    private static final Identifier RECOVERY_MODIFIER_ID = new Identifier("bcombat", "attack_recovery_speed");
     private static final Identifier EXHAUSTION_MODIFIER_ID = new Identifier("bcombat", "stamina_exhaustion_speed");
 
     private static final UUID WALK_MODIFIER_UUID = UUID.nameUUIDFromBytes(WALK_MODIFIER_ID.toString().getBytes());
     private static final UUID SPRINT_MODIFIER_UUID = UUID.nameUUIDFromBytes(SPRINT_MODIFIER_ID.toString().getBytes());
     private static final UUID WIND_UP_MODIFIER_UUID = UUID.nameUUIDFromBytes(WIND_UP_MODIFIER_ID.toString().getBytes());
+    private static final UUID RECOVERY_MODIFIER_UUID = UUID.nameUUIDFromBytes(RECOVERY_MODIFIER_ID.toString().getBytes());
     private static final UUID EXHAUSTION_MODIFIER_UUID = UUID.nameUUIDFromBytes(EXHAUSTION_MODIFIER_ID.toString().getBytes());
 
     private boolean combatModifierApplied = false;
     private boolean sprintModifierApplied = false;
     private boolean windUpModifierApplied = false;
+    private boolean recoveryModifierApplied = false;
     private boolean exhaustionModifierApplied = false;
 
     /**
