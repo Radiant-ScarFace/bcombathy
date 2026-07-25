@@ -32,14 +32,17 @@ public final class MovementModifierManager {
     private static final Identifier WALK_MODIFIER_ID = new Identifier("bcombat", "combat_walk_speed");
     private static final Identifier SPRINT_MODIFIER_ID = new Identifier("bcombat", "combat_sprint_speed");
     private static final Identifier WIND_UP_MODIFIER_ID = new Identifier("bcombat", "attack_wind_up_speed");
+    private static final Identifier EXHAUSTION_MODIFIER_ID = new Identifier("bcombat", "stamina_exhaustion_speed");
 
     private static final UUID WALK_MODIFIER_UUID = UUID.nameUUIDFromBytes(WALK_MODIFIER_ID.toString().getBytes());
     private static final UUID SPRINT_MODIFIER_UUID = UUID.nameUUIDFromBytes(SPRINT_MODIFIER_ID.toString().getBytes());
     private static final UUID WIND_UP_MODIFIER_UUID = UUID.nameUUIDFromBytes(WIND_UP_MODIFIER_ID.toString().getBytes());
+    private static final UUID EXHAUSTION_MODIFIER_UUID = UUID.nameUUIDFromBytes(EXHAUSTION_MODIFIER_ID.toString().getBytes());
 
     private boolean combatModifierApplied = false;
     private boolean sprintModifierApplied = false;
     private boolean windUpModifierApplied = false;
+    private boolean exhaustionModifierApplied = false;
 
     /**
      * Adds the base combat-mode walk speed penalty. Safe to call repeatedly;
@@ -69,10 +72,12 @@ public final class MovementModifierManager {
             speedAttribute.removeModifier(WALK_MODIFIER_UUID);
             speedAttribute.removeModifier(SPRINT_MODIFIER_UUID);
             speedAttribute.removeModifier(WIND_UP_MODIFIER_UUID);
+            speedAttribute.removeModifier(EXHAUSTION_MODIFIER_UUID);
         }
         combatModifierApplied = false;
         sprintModifierApplied = false;
         windUpModifierApplied = false;
+        exhaustionModifierApplied = false;
     }
 
     /**
@@ -109,6 +114,43 @@ public final class MovementModifierManager {
             speedAttribute.removeModifier(WIND_UP_MODIFIER_UUID);
         }
         windUpModifierApplied = false;
+    }
+
+    /**
+     * Adds the extra speed penalty applied while {@code
+     * ExhaustionState#EXHAUSTED} (stamina depleted to zero), on top of
+     * the standing combat-mode penalty. Safe to call repeatedly; will
+     * not double-apply. Intended to be called by {@link
+     * com.bcombat.combat.controller.CombatController} the instant
+     * exhaustion begins.
+     */
+    public void enableExhaustionPenalty(PlayerEntity player) {
+        EntityAttributeInstance speedAttribute = getSpeedAttribute(player);
+        if (speedAttribute == null || exhaustionModifierApplied) {
+            return;
+        }
+
+        speedAttribute.addPersistentModifier(new EntityAttributeModifier(
+                EXHAUSTION_MODIFIER_UUID,
+                "Stamina exhaustion penalty",
+                CombatConstants.EXHAUSTED_MOVEMENT_SPEED_MODIFIER,
+                Operation.MULTIPLY_TOTAL
+        ));
+        exhaustionModifierApplied = true;
+    }
+
+    /**
+     * Removes the exhaustion speed penalty. Safe to call repeatedly,
+     * including when no exhaustion penalty is currently applied.
+     * Intended to be called the instant exhaustion ends for any reason
+     * (sufficient stamina regenerated, or Combat Mode itself exited).
+     */
+    public void disableExhaustionPenalty(PlayerEntity player) {
+        EntityAttributeInstance speedAttribute = getSpeedAttribute(player);
+        if (speedAttribute != null) {
+            speedAttribute.removeModifier(EXHAUSTION_MODIFIER_UUID);
+        }
+        exhaustionModifierApplied = false;
     }
 
     /**

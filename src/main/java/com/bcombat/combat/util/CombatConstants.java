@@ -329,4 +329,83 @@ public final class CombatConstants {
      * that phase exists; kept at 1.0 (no change).
      */
     public static final double DEFAULT_BODY_HITBOX_MODIFIER = 1.0;
+
+    // ------------------------------------------------------------------
+    // Stamina & combat fatigue (Bannerlord-inspired). All base costs are
+    // scaled per-action by the equipped weapon's {@code
+    // WeaponProperties#staminaModifier()}; all regen timing is scaled by
+    // {@code WeaponProperties#staminaRegenDelayModifier()}/{@code
+    // #staminaRegenRateModifier()}. See {@code
+    // com.bcombat.combat.stamina.StaminaController} for the framework
+    // itself and {@code CombatController} for where each cost below is
+    // actually applied.
+    // ------------------------------------------------------------------
+
+    /** Default maximum stamina for a player with no perks/equipment adjustments. */
+    public static final double DEFAULT_MAX_STAMINA = 100.0;
+
+    /** Stamina restored per tick while regeneration is active and not delayed. */
+    public static final double STAMINA_REGEN_RATE_PER_TICK = 0.5;
+
+    /**
+     * Ticks that must elapse after the most recent stamina consumption
+     * before regeneration resumes. Independent of (and stacks with) the
+     * explicit suspension applied while attacking or holding a block —
+     * see {@code CombatController#isStaminaRegenSuspended()}.
+     */
+    public static final int STAMINA_REGEN_DELAY_TICKS = 30;
+
+    /** Stamina cost of committing an attack wind-up into its release (the swing itself). */
+    public static final double ATTACK_STAMINA_COST = 8.0;
+
+    /** Stamina cost of raising a guard, charged once on entering {@code ENTER_BLOCK}. */
+    public static final double BLOCK_ENTER_STAMINA_COST = 3.0;
+
+    /** Stamina drained per tick while a guard is actively held ({@code ENTER_BLOCK}/{@code BLOCK_IDLE}/{@code PERFECT_BLOCK}). */
+    public static final double BLOCK_HOLD_STAMINA_COST_PER_TICK = 0.15;
+
+    /**
+     * Stamina cost of landing a Perfect Block. Deliberately cheaper than
+     * a mistimed block absorbing a full hit would be (that full-hit cost
+     * is reserved future work, since damage-to-blocker isn't modeled
+     * yet), rewarding precise timing.
+     */
+    public static final double PERFECT_BLOCK_STAMINA_COST = 3.0;
+
+    /**
+     * Stamina cost of landing a Parry — the tightest-timed defensive
+     * mechanic, and consequently the cheapest, matching Bannerlord's own
+     * skill-rewards-efficiency philosophy.
+     */
+    public static final double PARRY_STAMINA_COST = 1.0;
+
+    /** Stamina cost of committing to a Chamber attempt, charged regardless of whether the timing succeeds. */
+    public static final double CHAMBER_STAMINA_COST = 5.0;
+
+    /** Stamina drained per tick while sprinting in Combat Mode. */
+    public static final double SPRINT_COMBAT_STAMINA_COST_PER_TICK = 0.2;
+
+    /**
+     * Reserved stamina cost for a future dodge mechanic. Unused in this
+     * phase — no dodge system exists yet — kept here purely as the
+     * configuration extension point {@code CombatConstants} is meant to
+     * provide ahead of the system that will consume it.
+     */
+    public static final double DODGE_STAMINA_COST = 6.0;
+
+    /**
+     * Fraction (0-1) of maximum stamina that must be regenerated before
+     * a player automatically leaves {@code ExhaustionState#EXHAUSTED}.
+     * Kept above zero so exhaustion isn't shrugged off after a single
+     * tick of regeneration.
+     */
+    public static final double EXHAUSTION_RECOVERY_THRESHOLD_RATIO = 0.25;
+
+    /**
+     * Additional movement speed multiplier applied on top of the
+     * standing Combat Mode penalty while exhausted. Expressed the same
+     * way as {@link #COMBAT_WALK_SPEED_MODIFIER} (an ADD_MULTIPLIED_TOTAL
+     * operand), applied/removed by {@code MovementModifierManager}.
+     */
+    public static final double EXHAUSTED_MOVEMENT_SPEED_MODIFIER = -0.25;
 }

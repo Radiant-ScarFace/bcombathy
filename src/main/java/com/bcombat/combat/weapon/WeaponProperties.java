@@ -50,6 +50,8 @@ public final class WeaponProperties {
     private final double recoveryModifier;
     private final double windUpModifier;
     private final double staminaModifier;
+    private final double staminaRegenDelayModifier;
+    private final double staminaRegenRateModifier;
     private final double baseDamage;
     private final double cutDamage;
     private final double pierceDamage;
@@ -67,6 +69,8 @@ public final class WeaponProperties {
         this.recoveryModifier = builder.recoveryModifier;
         this.windUpModifier = builder.windUpModifier;
         this.staminaModifier = builder.staminaModifier;
+        this.staminaRegenDelayModifier = builder.staminaRegenDelayModifier;
+        this.staminaRegenRateModifier = builder.staminaRegenRateModifier;
         this.baseDamage = builder.baseDamage;
         this.cutDamage = builder.cutDamage;
         this.pierceDamage = builder.pierceDamage;
@@ -143,13 +147,35 @@ public final class WeaponProperties {
     }
 
     /**
-     * Reserved multiplier for a future stamina system (e.g. cost per
-     * swing, per block). Unused by the combat framework in this phase;
-     * kept here so weapon definitions don't need to change shape once
-     * stamina exists.
+     * Multiplier applied to every stamina cost this weapon's wielder
+     * incurs — attacking, entering/holding a block, Perfect Blocks,
+     * Parries, Chambers, and sprinting in combat all scale by this value
+     * (see {@code CombatConstants}' Stamina section for the unscaled
+     * base costs). Below 1.0 makes a weapon cheaper to fight with, above
+     * 1.0 more taxing — e.g. a heavy two-handed weapon might use 1.3
+     * while a light dagger might use 0.7.
      */
     public double staminaModifier() {
         return staminaModifier;
+    }
+
+    /**
+     * Multiplier applied to {@code CombatConstants#STAMINA_REGEN_DELAY_TICKS}
+     * — how long stamina regeneration stays paused after this weapon's
+     * wielder last consumed stamina. Below 1.0 means stamina resumes
+     * regenerating sooner after use than the baseline.
+     */
+    public double staminaRegenDelayModifier() {
+        return staminaRegenDelayModifier;
+    }
+
+    /**
+     * Multiplier applied to {@code CombatConstants#STAMINA_REGEN_RATE_PER_TICK}
+     * while this weapon is equipped. Above 1.0 means stamina regenerates
+     * faster than the baseline once regeneration is active.
+     */
+    public double staminaRegenRateModifier() {
+        return staminaRegenRateModifier;
     }
 
     /**
@@ -205,6 +231,8 @@ public final class WeaponProperties {
                 + ", recoveryModifier=" + recoveryModifier
                 + ", windUpModifier=" + windUpModifier
                 + ", staminaModifier=" + staminaModifier
+                + ", staminaRegenDelayModifier=" + staminaRegenDelayModifier
+                + ", staminaRegenRateModifier=" + staminaRegenRateModifier
                 + ", baseDamage=" + baseDamage
                 + ", cutDamage=" + cutDamage
                 + ", pierceDamage=" + pierceDamage
@@ -229,6 +257,8 @@ public final class WeaponProperties {
         private double recoveryModifier = 1.0;
         private double windUpModifier = 1.0;
         private double staminaModifier = 1.0;
+        private double staminaRegenDelayModifier = 1.0;
+        private double staminaRegenRateModifier = 1.0;
         private double baseDamage = 1.0;
         private double cutDamage = 0.0;
         private double pierceDamage = 0.0;
@@ -279,6 +309,18 @@ public final class WeaponProperties {
 
         public Builder staminaModifier(double staminaModifier) {
             this.staminaModifier = staminaModifier;
+            return this;
+        }
+
+        /** @see WeaponProperties#staminaRegenDelayModifier() */
+        public Builder staminaRegenDelayModifier(double staminaRegenDelayModifier) {
+            this.staminaRegenDelayModifier = staminaRegenDelayModifier;
+            return this;
+        }
+
+        /** @see WeaponProperties#staminaRegenRateModifier() */
+        public Builder staminaRegenRateModifier(double staminaRegenRateModifier) {
+            this.staminaRegenRateModifier = staminaRegenRateModifier;
             return this;
         }
 

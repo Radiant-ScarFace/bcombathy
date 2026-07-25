@@ -30,10 +30,15 @@ import com.bcombat.combat.events.CombatEnterEvent;
 import com.bcombat.combat.events.CombatEvents;
 import com.bcombat.combat.events.CombatExitEvent;
 import com.bcombat.combat.events.CombatStateChangedEvent;
+import com.bcombat.combat.events.ExhaustionEndedEvent;
+import com.bcombat.combat.events.ExhaustionStartedEvent;
 import com.bcombat.combat.events.GuardDirectionChangedEvent;
 import com.bcombat.combat.events.MovementModeChangedEvent;
 import com.bcombat.combat.events.ParryEvent;
 import com.bcombat.combat.events.PerfectBlockEvent;
+import com.bcombat.combat.events.StaminaChangedEvent;
+import com.bcombat.combat.events.StaminaDepletedEvent;
+import com.bcombat.combat.events.StaminaRegeneratedEvent;
 import com.bcombat.combat.events.WeaponChangedEvent;
 import com.bcombat.combat.events.WeaponEquippedEvent;
 import com.bcombat.combat.events.WeaponUnequippedEvent;
@@ -41,6 +46,8 @@ import com.bcombat.combat.movement.MovementMode;
 import com.bcombat.combat.movement.MovementModifierManager;
 import com.bcombat.combat.player.CombatModeGuard;
 import com.bcombat.combat.player.CombatStance;
+import com.bcombat.combat.stamina.ExhaustionState;
+import com.bcombat.combat.stamina.StaminaController;
 import com.bcombat.combat.state.CombatState;
 import com.bcombat.combat.state.CombatStateManager;
 import com.bcombat.combat.util.CombatConstants;
@@ -72,6 +79,7 @@ public final class CombatController {
     private final ChamberController chamberController = new ChamberController();
     private final WeaponController weaponController = new WeaponController();
     private final CollisionController collisionController = new CollisionController();
+    private final StaminaController staminaController = new StaminaController();
 
     private MovementMode movementMode = MovementMode.NORMAL;
     private int transitionTicksRemaining = 0;
@@ -140,9 +148,15 @@ public final class CombatController {
 
     /**
      * Reserved hook for the future attack system to begin an attack
-     * wind-up. Only succeeds from {@code COMBAT_IDLE}.
+     * wind-up. Only succeeds from {@code COMBAT_IDLE}, and only while
+     * stamina is not {@link ExhaustionState#EXHAUSTED} — a new attack
+     * can never be started while exhausted, though one already mid-swing
+     * always completes.
      */
     public void requestPrepareAttack() {
+        if (staminaController.isExhausted()) {
+            return;
+        }
         if (stateManager.transitionTo(CombatState.PREPARING_ATTACK)) {
             windUpTicksElapsed = 0;
             releaseBuffered = false;
@@ -228,9 +242,14 @@ public final class CombatController {
      * (attempting to attack while blocking) is a no-op in {@link
      * #requestPrepareAttack()}. Since only one {@code CombatState} is
      * ever active at a time, this mutual exclusion falls directly out of
-     * the state machine and needs no extra bookkeeping here.
+     * the state machine and needs no extra bookkeeping here. Also
+     * refused while stamina is {@link ExhaustionState#EXHAUSTED} — a new
+     * block can never be raised while exhausted.
      */
     public void requestEnterBlock() {
+        if (staminaController.isExhausted()) {
+            return;
+        }
         stateManager.transitionTo(CombatState.ENTER_BLOCK);
     }
 
@@ -352,6 +371,10 @@ public final class CombatController {
         transitionTicksRemaining = withinParryWindow
                 ? CombatConstants.PARRY_STATE_DURATION_TICKS
                 : CombatConstants.PERFECT_BLOCK_STATE_DURATION_TICKS;
+
+        consumeStaminaForAction(withinParryWindow
+                ? CombatConstants.PARRY_STAMINA_COST
+                : CombatConstants.PERFECT_BLOCK_STAMINA_COST);
 
         CombatEvents.PERFECT_BLOCK.invoker()
                 .onPerfectBlock(new PerfectBlockEvent(player, incoming.attacker(), required, incoming.direction()));

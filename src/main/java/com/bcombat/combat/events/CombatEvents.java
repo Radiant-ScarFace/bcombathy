@@ -240,6 +240,46 @@ public final class CombatEvents {
                         }
                     });
 
+    public static final Event<StaminaChangedCallback> STAMINA_CHANGED =
+            EventFactory.createArrayBacked(StaminaChangedCallback.class,
+                    callbacks -> event -> {
+                        for (StaminaChangedCallback callback : callbacks) {
+                            callback.onStaminaChanged(event);
+                        }
+                    });
+
+    public static final Event<StaminaDepletedCallback> STAMINA_DEPLETED =
+            EventFactory.createArrayBacked(StaminaDepletedCallback.class,
+                    callbacks -> event -> {
+                        for (StaminaDepletedCallback callback : callbacks) {
+                            callback.onStaminaDepleted(event);
+                        }
+                    });
+
+    public static final Event<StaminaRegeneratedCallback> STAMINA_REGENERATED =
+            EventFactory.createArrayBacked(StaminaRegeneratedCallback.class,
+                    callbacks -> event -> {
+                        for (StaminaRegeneratedCallback callback : callbacks) {
+                            callback.onStaminaRegenerated(event);
+                        }
+                    });
+
+    public static final Event<ExhaustionStartedCallback> EXHAUSTION_STARTED =
+            EventFactory.createArrayBacked(ExhaustionStartedCallback.class,
+                    callbacks -> event -> {
+                        for (ExhaustionStartedCallback callback : callbacks) {
+                            callback.onExhaustionStarted(event);
+                        }
+                    });
+
+    public static final Event<ExhaustionEndedCallback> EXHAUSTION_ENDED =
+            EventFactory.createArrayBacked(ExhaustionEndedCallback.class,
+                    callbacks -> event -> {
+                        for (ExhaustionEndedCallback callback : callbacks) {
+                            callback.onExhaustionEnded(event);
+                        }
+                    });
+
     @FunctionalInterface
     public interface CombatEnterCallback {
         void onCombatEnter(CombatEnterEvent event);
@@ -378,5 +418,30 @@ public final class CombatEvents {
     @FunctionalInterface
     public interface StaggerTriggeredCallback {
         void onStaggerTriggered(StaggerTriggeredEvent event);
+    }
+
+    @FunctionalInterface
+    public interface StaminaChangedCallback {
+        void onStaminaChanged(StaminaChangedEvent event);
+    }
+
+    @FunctionalInterface
+    public interface StaminaDepletedCallback {
+        void onStaminaDepleted(StaminaDepletedEvent event);
+    }
+
+    @FunctionalInterface
+    public interface StaminaRegeneratedCallback {
+        void onStaminaRegenerated(StaminaRegeneratedEvent event);
+    }
+
+    @FunctionalInterface
+    public interface ExhaustionStartedCallback {
+        void onExhaustionStarted(ExhaustionStartedEvent event);
+    }
+
+    @FunctionalInterface
+    public interface ExhaustionEndedCallback {
+        void onExhaustionEnded(ExhaustionEndedEvent event);
     }
 }
