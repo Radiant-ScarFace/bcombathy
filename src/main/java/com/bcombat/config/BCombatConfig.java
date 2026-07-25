@@ -201,6 +201,23 @@ public final class BCombatConfig {
         CombatConstants.MOUNTED_CHARGE_DAMAGE_BONUS = d.mountedChargeDamageBonus;
         CombatConstants.MOUNTED_COMBAT_ENABLED = d.mountedCombatEnabled;
         CombatConstants.MOUNTED_REQUIRE_RECOGNIZED_MOUNT = d.mountedRequireRecognizedMount;
+
+        CombatConstants.COUCH_LANCE_ENABLED = d.couchLanceEnabled;
+        CombatConstants.COUCH_MIN_HORSE_SPEED = d.couchMinHorseSpeed;
+        CombatConstants.COUCH_MAX_SPEED_BONUS = d.couchMaxSpeedBonus;
+        CombatConstants.COUCH_DAMAGE_MULTIPLIER = d.couchDamageMultiplier;
+        CombatConstants.COUCH_MOMENTUM_SPEED_RATIO = d.couchMomentumSpeedRatio;
+        CombatConstants.COUCH_MOMENTUM_MULTIPLIER = d.couchMomentumMultiplier;
+        CombatConstants.COUCH_MAX_DAMAGE_CAP = d.couchMaxDamageCap;
+        CombatConstants.COUCH_PREPARE_TICKS = d.couchPrepareTicks;
+        CombatConstants.COUCH_RECOVERY_TICKS = d.couchRecoveryTicks;
+        CombatConstants.COUCH_MIN_RECOVERY_TICKS = d.couchMinRecoveryTicks;
+        CombatConstants.COUCH_COOLDOWN_TICKS = d.couchCooldownTicks;
+        CombatConstants.COUCH_IMPACT_FORCE = d.couchImpactForce;
+        CombatConstants.COUCH_TERRAIN_CHECK_DISTANCE = d.couchTerrainCheckDistance;
+        CombatConstants.COUCH_REQUIRE_DRY_TERRAIN = d.couchRequireDryTerrain;
+        CombatConstants.COUCH_AI_ENGAGE_DISTANCE = d.couchAiEngageDistance;
+        CombatConstants.COUCH_AI_COUCH_CHANCE = d.couchAiCouchChance;
     }
 
     private static BCombatConfigData captureFromConstants() {
@@ -268,6 +285,23 @@ public final class BCombatConfig {
         d.mountedChargeDamageBonus = CombatConstants.MOUNTED_CHARGE_DAMAGE_BONUS;
         d.mountedCombatEnabled = CombatConstants.MOUNTED_COMBAT_ENABLED;
         d.mountedRequireRecognizedMount = CombatConstants.MOUNTED_REQUIRE_RECOGNIZED_MOUNT;
+
+        d.couchLanceEnabled = CombatConstants.COUCH_LANCE_ENABLED;
+        d.couchMinHorseSpeed = CombatConstants.COUCH_MIN_HORSE_SPEED;
+        d.couchMaxSpeedBonus = CombatConstants.COUCH_MAX_SPEED_BONUS;
+        d.couchDamageMultiplier = CombatConstants.COUCH_DAMAGE_MULTIPLIER;
+        d.couchMomentumSpeedRatio = CombatConstants.COUCH_MOMENTUM_SPEED_RATIO;
+        d.couchMomentumMultiplier = CombatConstants.COUCH_MOMENTUM_MULTIPLIER;
+        d.couchMaxDamageCap = CombatConstants.COUCH_MAX_DAMAGE_CAP;
+        d.couchPrepareTicks = CombatConstants.COUCH_PREPARE_TICKS;
+        d.couchRecoveryTicks = CombatConstants.COUCH_RECOVERY_TICKS;
+        d.couchMinRecoveryTicks = CombatConstants.COUCH_MIN_RECOVERY_TICKS;
+        d.couchCooldownTicks = CombatConstants.COUCH_COOLDOWN_TICKS;
+        d.couchImpactForce = CombatConstants.COUCH_IMPACT_FORCE;
+        d.couchTerrainCheckDistance = CombatConstants.COUCH_TERRAIN_CHECK_DISTANCE;
+        d.couchRequireDryTerrain = CombatConstants.COUCH_REQUIRE_DRY_TERRAIN;
+        d.couchAiEngageDistance = CombatConstants.COUCH_AI_ENGAGE_DISTANCE;
+        d.couchAiCouchChance = CombatConstants.COUCH_AI_COUCH_CHANCE;
 
         return d;
     }

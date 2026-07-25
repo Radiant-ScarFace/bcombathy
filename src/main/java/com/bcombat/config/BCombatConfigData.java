@@ -95,4 +95,22 @@ public final class BCombatConfigData {
     public double mountedChargeDamageBonus = CombatConstants.MOUNTED_CHARGE_DAMAGE_BONUS;
     public boolean mountedCombatEnabled = CombatConstants.MOUNTED_COMBAT_ENABLED;
     public boolean mountedRequireRecognizedMount = CombatConstants.MOUNTED_REQUIRE_RECOGNIZED_MOUNT;
+
+    // ---------------- Couch lance combat ----------------
+    public boolean couchLanceEnabled = CombatConstants.COUCH_LANCE_ENABLED;
+    public double couchMinHorseSpeed = CombatConstants.COUCH_MIN_HORSE_SPEED;
+    public double couchMaxSpeedBonus = CombatConstants.COUCH_MAX_SPEED_BONUS;
+    public double couchDamageMultiplier = CombatConstants.COUCH_DAMAGE_MULTIPLIER;
+    public double couchMomentumSpeedRatio = CombatConstants.COUCH_MOMENTUM_SPEED_RATIO;
+    public double couchMomentumMultiplier = CombatConstants.COUCH_MOMENTUM_MULTIPLIER;
+    public double couchMaxDamageCap = CombatConstants.COUCH_MAX_DAMAGE_CAP;
+    public int couchPrepareTicks = CombatConstants.COUCH_PREPARE_TICKS;
+    public int couchRecoveryTicks = CombatConstants.COUCH_RECOVERY_TICKS;
+    public int couchMinRecoveryTicks = CombatConstants.COUCH_MIN_RECOVERY_TICKS;
+    public int couchCooldownTicks = CombatConstants.COUCH_COOLDOWN_TICKS;
+    public double couchImpactForce = CombatConstants.COUCH_IMPACT_FORCE;
+    public double couchTerrainCheckDistance = CombatConstants.COUCH_TERRAIN_CHECK_DISTANCE;
+    public boolean couchRequireDryTerrain = CombatConstants.COUCH_REQUIRE_DRY_TERRAIN;
+    public double couchAiEngageDistance = CombatConstants.COUCH_AI_ENGAGE_DISTANCE;
+    public double couchAiCouchChance = CombatConstants.COUCH_AI_COUCH_CHANCE;
 }

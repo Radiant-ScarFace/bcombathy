@@ -514,4 +514,113 @@ public final class CombatConstants {
 
     /** If true, only vehicles recognized as combat mounts count as "mounted" for combat purposes. */
     public static boolean MOUNTED_REQUIRE_RECOGNIZED_MOUNT = true;
+
+    // ------------------------------------------------------------------
+    // Couch Lance Combat (Bannerlord-inspired). Extends Mounted Combat
+    // above: every field here only ever applies on top of an already
+    // {@code MountedCombatController#isMounted()} combatant, and only
+    // while wielding a weapon whose {@code WeaponProperties#isCouchCapable()}
+    // is true - see {@code com.bcombat.combat.couch.CouchLanceController}
+    // for the eligibility/state-machine logic that reads these, and
+    // {@code com.bcombat.combat.couch.CouchLanceModifiers} for the single
+    // place the damage-facing values below are actually combined with
+    // mounted/weapon values.
+    // ------------------------------------------------------------------
+
+    /** Global on/off switch for the entire couch lance framework. */
+    public static boolean COUCH_LANCE_ENABLED = true;
+
+    /**
+     * Minimum mount horizontal speed (blocks/tick) required for a rider
+     * to become eligible to ready ("couch") a couch-capable weapon at
+     * all. Below this, a couch-capable weapon behaves like any other
+     * mounted weapon - normal mounted attacks, no couch bonuses.
+     */
+    public static double COUCH_MIN_HORSE_SPEED = 0.20;
+
+    /**
+     * Additional fractional damage bonus (on top of {@link
+     * #COUCH_DAMAGE_MULTIPLIER}) available purely from speed, reached in
+     * full once the mount is moving at double {@link
+     * #COUCH_MIN_HORSE_SPEED}. E.g. {@code 0.5} means a fully-charging
+     * mount deals up to 50% more than a mount only just barely eligible.
+     * Scales linearly between {@link #COUCH_MIN_HORSE_SPEED} (0% bonus)
+     * and double that speed (100% of this value), then holds flat -
+     * see {@code CouchLanceModifiers#damageMultiplier}.
+     */
+    public static double COUCH_MAX_SPEED_BONUS = 0.50;
+
+    /** Base damage multiplier applied to a successful couched-lance impact, before the speed/momentum bonuses. */
+    public static double COUCH_DAMAGE_MULTIPLIER = 1.75;
+
+    /**
+     * Speed, as a multiple of {@link #COUCH_MIN_HORSE_SPEED}, at which
+     * the flat {@link #COUCH_MOMENTUM_MULTIPLIER} bonus additionally
+     * applies - representing the mount having built up enough momentum
+     * for the impact to be meaningfully harder, distinct from (and
+     * stacked on top of) the continuous speed-scaled bonus above.
+     */
+    public static double COUCH_MOMENTUM_SPEED_RATIO = 1.5;
+
+    /** Flat multiplier stacked on top of every other couch damage bonus once {@link #COUCH_MOMENTUM_SPEED_RATIO} is met. */
+    public static double COUCH_MOMENTUM_MULTIPLIER = 1.15;
+
+    /**
+     * Absolute ceiling on final damage for a hit that received any
+     * couch bonus at all (never applied to ordinary, non-couched hits),
+     * so stacking every bonus at maximum charge speed can never produce
+     * an unbounded one-shot.
+     */
+    public static double COUCH_MAX_DAMAGE_CAP = 40.0;
+
+    /** Ticks a rider must hold couch-eligible conditions while {@code PREPARING} before the lance becomes {@code ACTIVE} (ready to strike). */
+    public static int COUCH_PREPARE_TICKS = 8;
+
+    /**
+     * Ticks spent in the couch state machine's {@code RECOVERY} state
+     * after an impact, interrupt, or resolved (missed/blocked) couched
+     * strike, before couching can be attempted again - independent of,
+     * and stacked alongside, {@code CombatState.RECOVERY}'s own
+     * weapon/mounted-scaled duration for the underlying attack itself.
+     * Directly scaled down by mount speed at the moment recovery began,
+     * per the design requirement that horse velocity influence recovery
+     * time - see {@code CouchLanceModifiers#recoveryTicks}.
+     */
+    public static int COUCH_RECOVERY_TICKS = 30;
+
+    /** Minimum ticks after entering {@code RECOVERY}, regardless of speed-based reduction, so recovery can never collapse to zero. */
+    public static int COUCH_MIN_RECOVERY_TICKS = 10;
+
+    /** Additional cooldown, in ticks, after {@code RECOVERY} completes before the rider is eligible to begin couching again. */
+    public static int COUCH_COOLDOWN_TICKS = 20;
+
+    /**
+     * Base knockback strength applied to the target on a successful
+     * couch impact (representing the physical force of a mounted
+     * charge), scaled further by the attacker's speed ratio at impact -
+     * see {@code CouchLanceModifiers#impactForce}.
+     */
+    public static double COUCH_IMPACT_FORCE = 1.4;
+
+    /**
+     * Maximum distance, in blocks, an obstacle-safety raycast checks
+     * directly ahead of the mount for terrain safety - a wall or cliff
+     * edge within this distance cancels/blocks couching, per the design
+     * requirement that terrain safety gate activation.
+     */
+    public static double COUCH_TERRAIN_CHECK_DISTANCE = 2.0;
+
+    /** If true, a mount currently in any fluid (water/lava) is never terrain-safe to couch in. */
+    public static boolean COUCH_REQUIRE_DRY_TERRAIN = true;
+
+    /**
+     * Preferred approach distance, in blocks, a couch-eligible mounted
+     * AI tries to reach before triggering its charge - analogous to
+     * {@code AIDifficultyPreset#preferredDistanceRatio()} but specific
+     * to the longer effective reach of a couched charge.
+     */
+    public static double COUCH_AI_ENGAGE_DISTANCE = 6.0;
+
+    /** Per-decision probability a couch-eligible mounted AI actually commits to charging rather than fighting normally. */
+    public static double COUCH_AI_COUCH_CHANCE = 0.5;
 }
