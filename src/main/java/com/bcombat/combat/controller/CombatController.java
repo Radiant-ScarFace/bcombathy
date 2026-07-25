@@ -114,6 +114,7 @@ public final class CombatController {
     private final CollisionController collisionController = new CollisionController();
     private final StaminaController staminaController = new StaminaController();
     private final MountedCombatController mountedCombatController;
+    private final com.bcombat.combat.couch.CouchLanceController couchLanceController;
 
     private MovementMode movementMode = MovementMode.NORMAL;
     private int transitionTicksRemaining = 0;
@@ -145,7 +146,17 @@ public final class CombatController {
         this.player = player;
         this.authoritative = authoritative;
         this.mountedCombatController = new MountedCombatController(player);
+        this.couchLanceController = new com.bcombat.combat.couch.CouchLanceController(player, this);
         this.stateManager.setOnTransition(this::onStateTransition);
+    }
+
+    /**
+     * @return this combatant's dedicated couch-lance sub-controller, owned
+     * exactly the same way {@link #mountedCombatController} is. See
+     * {@code CouchLanceController} for the full state machine it drives.
+     */
+    public com.bcombat.combat.couch.CouchLanceController getCouchLanceController() {
+        return couchLanceController;
     }
 
     /** @return true if this is the server's authoritative instance for {@code player} - see {@link #authoritative}. */
@@ -412,6 +423,14 @@ public final class CombatController {
      * always completes.
      */
     public void requestPrepareAttack() {
+        if (couchLanceController.isActive()) {
+            // A braced couched lance intercepts the very next committed
+            // attack request and redirects it into an immediate couched
+            // thrust, bypassing the normal wind-up entirely - see
+            // CouchState#ACTIVE's class docs.
+            beginCouchAttackRelease();
+            return;
+        }
         if (staminaController.isExhausted()) {
             return;
         }
@@ -869,6 +888,7 @@ public final class CombatController {
         applyGuardConditions();
         updateEquippedWeapon();
         advanceTransitionTimers();
+        couchLanceController.tick();
         // See the ENTERING_COMBAT branch of onStateTransition for why
         // every movement-speed mutation is confined to the authoritative
         // instance.
@@ -1126,6 +1146,51 @@ public final class CombatController {
             CombatEvents.ATTACK_RELEASED.invoker()
                     .onAttackReleased(new AttackReleasedEvent(player, attackDirection));
         }
+    }
+
+    /**
+     * Releases a braced ({@link com.bcombat.combat.couch.CouchState#ACTIVE})
+     * couched lance directly into the normal attack pipeline, skipping
+     * {@code PREPARING_ATTACK}'s ordinary wind-up entirely - the couched
+     * thrust was already "wound up" by the time spent bracing. Only
+     * {@link #requestPrepareAttack()} calls this, and only after
+     * confirming {@code couchLanceController.isActive()}; the interior
+     * {@code stateManager.transitionTo(COMBAT_IDLE -> PREPARING_ATTACK)}
+     * guard below still makes this safe to call defensively from
+     * anywhere else, since it is a no-op outside {@code COMBAT_IDLE}.
+     * <p>
+     * Calls {@link com.bcombat.combat.couch.CouchLanceController#onImpactReleased}
+     * immediately once the underlying {@code PREPARING_ATTACK -> ATTACKING}
+     * transition has actually succeeded - that method's own {@code state
+     * == ACTIVE} guard is what ultimately prevents a duplicate/defensive
+     * call here from ever double-firing {@code CouchImpactEvent}.
+     */
+    private void beginCouchAttackRelease() {
+        if (stateManager.getCurrentState() != CombatState.COMBAT_IDLE) {
+            return;
+        }
+        if (!stateManager.transitionTo(CombatState.PREPARING_ATTACK)) {
+            return;
+        }
+        windUpTicksElapsed = 0;
+        releaseBuffered = true;
+        attackDirection = AttackDirection.THRUST;
+        CombatEvents.ATTACK_PREPARATION_STARTED.invoker()
+                .onAttackPreparationStarted(new AttackPreparationStartedEvent(player));
+
+        CombatState beforeRelease = stateManager.getCurrentState();
+        beginAttackRelease();
+        if (beforeRelease == CombatState.PREPARING_ATTACK && stateManager.getCurrentState() == CombatState.ATTACKING) {
+            couchLanceController.onImpactReleased(couchSpeedRatio());
+        }
+    }
+
+    /** @return the mount's current speed as a multiple of {@link CombatConstants#COUCH_MIN_HORSE_SPEED}, or 0.0 if not mounted. */
+    private double couchSpeedRatio() {
+        if (!isMounted()) {
+            return 0.0;
+        }
+        return getMountSpeed() / CombatConstants.COUCH_MIN_HORSE_SPEED;
     }
 
     // ------------------------------------------------------------------
