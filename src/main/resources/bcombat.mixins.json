@@ -1,9 +1,11 @@
 {
 	"required": true,
-	"package": "com.bcombat.mixin",
+	"package": "com.bcombat.client.mixin",
 	"compatibilityLevel": "JAVA_17",
-	"mixins": [
-		"ExampleMixin"
+	"client": [
+		"ExampleClientMixin",
+		"CameraShakeMixin",
+		"HitStopMixin"
 	],
 	"injectors": {
 		"defaultRequire": 1
