@@ -468,4 +468,50 @@ public final class CombatConstants {
      * operand), applied/removed by {@code MovementModifierManager}.
      */
     public static double EXHAUSTED_MOVEMENT_SPEED_MODIFIER = -0.25;
+
+    // ------------------------------------------------------------------
+    // Mounted Combat (Bannerlord-inspired). All base timing/costs above
+    // remain the ground-combat baseline; every field below is a
+    // *multiplier* stacked on top of that baseline only while {@code
+    // com.bcombat.combat.mounted.MountedCombatController#isMounted()}
+    // is true — see {@code
+    // com.bcombat.combat.mounted.MountedCombatModifiers} for the single
+    // place these are actually combined with weapon/base values.
+    // ------------------------------------------------------------------
+
+    /** Multiplier applied to a weapon's effective reach while mounted. */
+    public static double MOUNTED_REACH_MODIFIER = 1.35;
+
+    /** Multiplier applied to wind-up duration while mounted. */
+    public static double MOUNTED_WIND_UP_MODIFIER = 1.15;
+
+    /** Multiplier applied to the ATTACKING (release) duration while mounted. */
+    public static double MOUNTED_RELEASE_MODIFIER = 1.10;
+
+    /** Multiplier applied to RECOVERY duration while mounted. */
+    public static double MOUNTED_RECOVERY_MODIFIER = 1.20;
+
+    /** Multiplier applied to every stamina cost (attack, block, perfect block, parry, chamber) while mounted. */
+    public static double MOUNTED_STAMINA_COST_MODIFIER = 1.25;
+
+    /** Multiplier applied to stamina regeneration rate while mounted. */
+    public static double MOUNTED_STAMINA_REGEN_RATE_MODIFIER = 0.85;
+
+    /** Multiplier applied to a mounted attacker's final damage output. */
+    public static double MOUNTED_DAMAGE_MULTIPLIER = 1.20;
+
+    /**
+     * Minimum horizontal speed (blocks/tick) the mount must be moving at
+     * for {@link #MOUNTED_CHARGE_DAMAGE_BONUS} to additionally apply.
+     */
+    public static double MOUNTED_CHARGE_SPEED_THRESHOLD = 0.25;
+
+    /** Additional flat multiplier stacked on top of {@link #MOUNTED_DAMAGE_MULTIPLIER} during a charge. */
+    public static double MOUNTED_CHARGE_DAMAGE_BONUS = 1.15;
+
+    /** Global on/off switch for the entire mounted combat framework. */
+    public static boolean MOUNTED_COMBAT_ENABLED = true;
+
+    /** If true, only vehicles recognized as combat mounts count as "mounted" for combat purposes. */
+    public static boolean MOUNTED_REQUIRE_RECOGNIZED_MOUNT = true;
 }

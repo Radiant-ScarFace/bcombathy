@@ -57,6 +57,10 @@ public final class CombatDebugLogger {
         CombatEvents.COMBAT_STATE_CHANGED.register(e ->
                 log("%s state: %s -> %s", name(e.player()), e.previousState(), e.currentState()));
 
+        CombatEvents.MOUNTED_STATE_CHANGED.register(e ->
+                log("%s mounted: %s%s", name(e.combatant()), e.mounted(),
+                        e.mount() != null ? " (" + e.mount().getType().toString() + ")" : ""));
+
         CombatEvents.ATTACK_DIRECTION_CHANGED.register(e ->
                 log("%s attack direction: %s -> %s", name(e.player()), e.previousDirection(), e.currentDirection()));
         CombatEvents.ATTACK_RELEASED.register(e ->

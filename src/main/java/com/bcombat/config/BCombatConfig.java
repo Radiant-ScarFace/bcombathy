@@ -189,6 +189,18 @@ public final class BCombatConfig {
         CombatConstants.SPRINT_COMBAT_STAMINA_COST_PER_TICK = d.sprintCombatStaminaCostPerTick;
         CombatConstants.EXHAUSTION_RECOVERY_THRESHOLD_RATIO = d.exhaustionRecoveryThresholdRatio;
         CombatConstants.EXHAUSTED_MOVEMENT_SPEED_MODIFIER = d.exhaustedMovementSpeedModifier;
+
+        CombatConstants.MOUNTED_REACH_MODIFIER = d.mountedReachModifier;
+        CombatConstants.MOUNTED_WIND_UP_MODIFIER = d.mountedWindUpModifier;
+        CombatConstants.MOUNTED_RELEASE_MODIFIER = d.mountedReleaseModifier;
+        CombatConstants.MOUNTED_RECOVERY_MODIFIER = d.mountedRecoveryModifier;
+        CombatConstants.MOUNTED_STAMINA_COST_MODIFIER = d.mountedStaminaCostModifier;
+        CombatConstants.MOUNTED_STAMINA_REGEN_RATE_MODIFIER = d.mountedStaminaRegenRateModifier;
+        CombatConstants.MOUNTED_DAMAGE_MULTIPLIER = d.mountedDamageMultiplier;
+        CombatConstants.MOUNTED_CHARGE_SPEED_THRESHOLD = d.mountedChargeSpeedThreshold;
+        CombatConstants.MOUNTED_CHARGE_DAMAGE_BONUS = d.mountedChargeDamageBonus;
+        CombatConstants.MOUNTED_COMBAT_ENABLED = d.mountedCombatEnabled;
+        CombatConstants.MOUNTED_REQUIRE_RECOGNIZED_MOUNT = d.mountedRequireRecognizedMount;
     }
 
     private static BCombatConfigData captureFromConstants() {
@@ -244,6 +256,18 @@ public final class BCombatConfig {
         d.sprintCombatStaminaCostPerTick = CombatConstants.SPRINT_COMBAT_STAMINA_COST_PER_TICK;
         d.exhaustionRecoveryThresholdRatio = CombatConstants.EXHAUSTION_RECOVERY_THRESHOLD_RATIO;
         d.exhaustedMovementSpeedModifier = CombatConstants.EXHAUSTED_MOVEMENT_SPEED_MODIFIER;
+
+        d.mountedReachModifier = CombatConstants.MOUNTED_REACH_MODIFIER;
+        d.mountedWindUpModifier = CombatConstants.MOUNTED_WIND_UP_MODIFIER;
+        d.mountedReleaseModifier = CombatConstants.MOUNTED_RELEASE_MODIFIER;
+        d.mountedRecoveryModifier = CombatConstants.MOUNTED_RECOVERY_MODIFIER;
+        d.mountedStaminaCostModifier = CombatConstants.MOUNTED_STAMINA_COST_MODIFIER;
+        d.mountedStaminaRegenRateModifier = CombatConstants.MOUNTED_STAMINA_REGEN_RATE_MODIFIER;
+        d.mountedDamageMultiplier = CombatConstants.MOUNTED_DAMAGE_MULTIPLIER;
+        d.mountedChargeSpeedThreshold = CombatConstants.MOUNTED_CHARGE_SPEED_THRESHOLD;
+        d.mountedChargeDamageBonus = CombatConstants.MOUNTED_CHARGE_DAMAGE_BONUS;
+        d.mountedCombatEnabled = CombatConstants.MOUNTED_COMBAT_ENABLED;
+        d.mountedRequireRecognizedMount = CombatConstants.MOUNTED_REQUIRE_RECOGNIZED_MOUNT;
 
         return d;
     }

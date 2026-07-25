@@ -40,6 +40,14 @@ public final class CombatEvents {
                         }
                     });
 
+    public static final Event<MountedStateChangedCallback> MOUNTED_STATE_CHANGED =
+            EventFactory.createArrayBacked(MountedStateChangedCallback.class,
+                    callbacks -> event -> {
+                        for (MountedStateChangedCallback callback : callbacks) {
+                            callback.onMountedStateChanged(event);
+                        }
+                    });
+
     public static final Event<CombatStateChangedCallback> COMBAT_STATE_CHANGED =
             EventFactory.createArrayBacked(CombatStateChangedCallback.class,
                     callbacks -> event -> {
@@ -443,5 +451,10 @@ public final class CombatEvents {
     @FunctionalInterface
     public interface ExhaustionEndedCallback {
         void onExhaustionEnded(ExhaustionEndedEvent event);
+    }
+
+    @FunctionalInterface
+    public interface MountedStateChangedCallback {
+        void onMountedStateChanged(MountedStateChangedEvent event);
     }
 }

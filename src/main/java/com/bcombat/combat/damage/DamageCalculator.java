@@ -1,6 +1,7 @@
 package com.bcombat.combat.damage;
 
 import com.bcombat.combat.collision.HitResult;
+import com.bcombat.combat.mounted.MountedCombatModifiers;
 import com.bcombat.combat.weapon.WeaponProperties;
 
 import java.util.Objects;
@@ -84,7 +85,14 @@ public final class DamageCalculator {
         double criticalMultiplier = critical ? DamageConstants.CRITICAL_HIT_MULTIPLIER : 1.0;
         double afterCritical = postArmorDamage * criticalMultiplier;
 
-        double finalDamage = Math.max(DamageConstants.MINIMUM_DAMAGE, afterCritical);
+        // Mounted charge bonus - see MountedCombatModifiers#damageMultiplier
+        // for the full stationary-mount-vs-charging-mount breakdown.
+        // Applied last, on top of every other multiplier, exactly like
+        // the critical-hit bonus above, before the final floor clamp.
+        double mountedMultiplier = MountedCombatModifiers.damageMultiplier(hitResult.attacker());
+        double afterMounted = afterCritical * mountedMultiplier;
+
+        double finalDamage = Math.max(DamageConstants.MINIMUM_DAMAGE, afterMounted);
 
         boolean staggerTriggered = finalDamage >= DamageConstants.STAGGER_DAMAGE_THRESHOLD;
 

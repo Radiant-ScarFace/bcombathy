@@ -42,6 +42,8 @@ import com.bcombat.combat.events.StaminaRegeneratedEvent;
 import com.bcombat.combat.events.WeaponChangedEvent;
 import com.bcombat.combat.events.WeaponEquippedEvent;
 import com.bcombat.combat.events.WeaponUnequippedEvent;
+import com.bcombat.combat.mounted.MountedCombatController;
+import com.bcombat.combat.mounted.MountedCombatModifiers;
 import com.bcombat.combat.movement.MovementMode;
 import com.bcombat.combat.movement.MovementModifierManager;
 import com.bcombat.combat.player.CombatModeGuard;
@@ -111,6 +113,7 @@ public final class CombatController {
     private final WeaponController weaponController = new WeaponController();
     private final CollisionController collisionController = new CollisionController();
     private final StaminaController staminaController = new StaminaController();
+    private final MountedCombatController mountedCombatController;
 
     private MovementMode movementMode = MovementMode.NORMAL;
     private int transitionTicksRemaining = 0;
@@ -141,6 +144,7 @@ public final class CombatController {
     public CombatController(LivingEntity player, boolean authoritative) {
         this.player = player;
         this.authoritative = authoritative;
+        this.mountedCombatController = new MountedCombatController(player);
         this.stateManager.setOnTransition(this::onStateTransition);
     }
 
@@ -316,7 +320,8 @@ public final class CombatController {
         double previousStamina = staminaController.getCurrentStamina();
         ExhaustionState previousExhaustion = staminaController.getExhaustionState();
 
-        double currentStamina = staminaController.consume(amount);
+        double mountedAmount = MountedCombatModifiers.applyStaminaCostModifier(isMounted(), amount);
+        double currentStamina = staminaController.consume(mountedAmount);
 
         reportStaminaChange(previousStamina, currentStamina, previousExhaustion);
     }
@@ -815,6 +820,42 @@ public final class CombatController {
     }
 
     // ------------------------------------------------------------------
+    // Mounted combat read-only accessors — the public surface
+    // AICombatController (and any future HUD/networking) uses to make
+    // mount-aware decisions without ever touching MountedCombatController
+    // directly. Mirrors the read-only accessors already exposed above
+    // for stamina; the only mutation entry point remains {@link
+    // MountedCombatController#tick()}, driven exclusively by this
+    // controller's own {@link #tick()}.
+    // ------------------------------------------------------------------
+
+    /** @return true if this combatant is currently mounted on a recognized combat mount. */
+    public boolean isMounted() {
+        return mountedCombatController.isMounted();
+    }
+
+    /** @return the entity currently ridden, or {@code null} if not mounted. */
+    public net.minecraft.entity.Entity getMount() {
+        return mountedCombatController.getMount();
+    }
+
+    /** @return the mount's current horizontal speed in blocks/tick, or 0.0 if not mounted. */
+    public double getMountSpeed() {
+        return mountedCombatController.getMountSpeed();
+    }
+
+    /**
+     * @return the equipped weapon's reach, scaled by {@link
+     * MountedCombatModifiers#applyReachModifier} while mounted — the
+     * single effective-range value both {@link #tickCollision()} and
+     * {@code AICombatController}'s tactical positioning should read
+     * instead of the weapon's raw {@code reach()}.
+     */
+    public double getEffectiveReach() {
+        return MountedCombatModifiers.applyReachModifier(isMounted(), weaponController.getCurrentWeapon().reach());
+    }
+
+    // ------------------------------------------------------------------
     // Per-tick driver - called by CombatControllerManager
     // ------------------------------------------------------------------
 
@@ -824,6 +865,7 @@ public final class CombatController {
      * controller is active.
      */
     public void tick() {
+        mountedCombatController.tick();
         applyGuardConditions();
         updateEquippedWeapon();
         advanceTransitionTimers();
@@ -856,7 +898,9 @@ public final class CombatController {
         ExhaustionState previousExhaustion = staminaController.getExhaustionState();
 
         WeaponProperties weapon = weaponController.getCurrentWeapon();
-        staminaController.tick(isStaminaRegenSuspended(), weapon.staminaRegenDelayModifier(), weapon.staminaRegenRateModifier());
+        double mountedRegenRateModifier = MountedCombatModifiers.staminaRegenRateModifier(isMounted());
+        staminaController.tick(isStaminaRegenSuspended(), weapon.staminaRegenDelayModifier(),
+                weapon.staminaRegenRateModifier() * mountedRegenRateModifier);
 
         reportStaminaChange(previousStamina, staminaController.getCurrentStamina(), previousExhaustion);
     }
@@ -899,7 +943,7 @@ public final class CombatController {
         if (stateManager.getCurrentState() != CombatState.ATTACKING) {
             return;
         }
-        collisionController.tick(player, weaponController.getCurrentWeapon().reach())
+        collisionController.tick(player, getEffectiveReach())
                 .ifPresent(this::resolveCollisionOutcome);
     }
 
@@ -1206,7 +1250,9 @@ public final class CombatController {
      * WeaponProperties#windUpModifier()}.
      */
     private int effectiveWindUpTicks() {
-        return scaledTicks(CombatConstants.MIN_ATTACK_PREPARATION_TICKS, weaponController.getCurrentWeapon().windUpModifier());
+        double modifier = weaponController.getCurrentWeapon().windUpModifier()
+                * MountedCombatModifiers.windUpModifier(isMounted());
+        return scaledTicks(CombatConstants.MIN_ATTACK_PREPARATION_TICKS, modifier);
     }
 
     /**
@@ -1221,6 +1267,7 @@ public final class CombatController {
         double modifier = attackDirection == AttackDirection.THRUST
                 ? weapon.thrustSpeedModifier()
                 : weapon.swingSpeedModifier();
+        modifier *= MountedCombatModifiers.releaseModifier(isMounted());
         return scaledTicks(CombatConstants.ATTACK_RELEASE_DURATION_TICKS, modifier);
     }
 
@@ -1229,7 +1276,9 @@ public final class CombatController {
      * the equipped weapon's {@link WeaponProperties#recoveryModifier()}.
      */
     private int effectiveRecoveryTicks() {
-        return scaledTicks(CombatConstants.RECOVERY_DURATION_TICKS, weaponController.getCurrentWeapon().recoveryModifier());
+        double modifier = weaponController.getCurrentWeapon().recoveryModifier()
+                * MountedCombatModifiers.recoveryModifier(isMounted());
+        return scaledTicks(CombatConstants.RECOVERY_DURATION_TICKS, modifier);
     }
 
     /**

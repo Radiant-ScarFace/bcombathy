@@ -82,4 +82,17 @@ public final class BCombatConfigData {
     public double sprintCombatStaminaCostPerTick = CombatConstants.SPRINT_COMBAT_STAMINA_COST_PER_TICK;
     public double exhaustionRecoveryThresholdRatio = CombatConstants.EXHAUSTION_RECOVERY_THRESHOLD_RATIO;
     public double exhaustedMovementSpeedModifier = CombatConstants.EXHAUSTED_MOVEMENT_SPEED_MODIFIER;
+
+    // ---------------- Mounted combat ----------------
+    public double mountedReachModifier = CombatConstants.MOUNTED_REACH_MODIFIER;
+    public double mountedWindUpModifier = CombatConstants.MOUNTED_WIND_UP_MODIFIER;
+    public double mountedReleaseModifier = CombatConstants.MOUNTED_RELEASE_MODIFIER;
+    public double mountedRecoveryModifier = CombatConstants.MOUNTED_RECOVERY_MODIFIER;
+    public double mountedStaminaCostModifier = CombatConstants.MOUNTED_STAMINA_COST_MODIFIER;
+    public double mountedStaminaRegenRateModifier = CombatConstants.MOUNTED_STAMINA_REGEN_RATE_MODIFIER;
+    public double mountedDamageMultiplier = CombatConstants.MOUNTED_DAMAGE_MULTIPLIER;
+    public double mountedChargeSpeedThreshold = CombatConstants.MOUNTED_CHARGE_SPEED_THRESHOLD;
+    public double mountedChargeDamageBonus = CombatConstants.MOUNTED_CHARGE_DAMAGE_BONUS;
+    public boolean mountedCombatEnabled = CombatConstants.MOUNTED_COMBAT_ENABLED;
+    public boolean mountedRequireRecognizedMount = CombatConstants.MOUNTED_REQUIRE_RECOGNIZED_MOUNT;
 }

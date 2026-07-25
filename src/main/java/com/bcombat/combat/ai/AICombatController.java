@@ -198,7 +198,7 @@ public final class AICombatController {
         }
 
         double distance = entity.distanceTo(target);
-        double reach = combatController.getWeaponProperties().reach();
+        double reach = combatController.getEffectiveReach();
         double idealDistance = Math.max(1.0, reach * difficulty.preferredDistanceRatio());
         double approachThreshold = idealDistance + APPROACH_SLACK;
         double retreatThreshold = idealDistance * RETREAT_TRIGGER_RATIO;
@@ -319,7 +319,7 @@ public final class AICombatController {
         }
 
         double distance = entity.distanceTo(target);
-        double reach = combatController.getWeaponProperties().reach();
+        double reach = combatController.getEffectiveReach();
         double idealDistance = Math.max(1.0, reach * difficulty.preferredDistanceRatio());
 
         if (distance <= idealDistance * ENGAGEMENT_ENTRY_SLACK
