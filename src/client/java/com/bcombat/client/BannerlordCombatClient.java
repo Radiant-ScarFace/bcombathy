@@ -1,5 +1,6 @@
 package com.bcombat.client;
 
+import com.bcombat.client.feedback.CombatFeedbackManager;
 import com.bcombat.combat.controller.CombatControllerManager;
 import com.bcombat.combat.input.CombatInputHandler;
 import com.bcombat.combat.input.CombatKeyBindings;
@@ -15,6 +16,11 @@ public class BannerlordCombatClient implements ClientModInitializer {
 		// entry point every future system should build against.
 		CombatKeyBindings.register();
 		CombatInputHandler.register();
+
+		// Wires every Combat Effects & Feedback Framework subsystem
+		// (hit stop, camera shake, sound, particles, weapon trails) to
+		// CombatEvents. See CombatFeedbackManager's class docs.
+		CombatFeedbackManager.register();
 
 		// Avoid leaking a stale controller for the local player across
 		// disconnect/reconnect or server switches.
