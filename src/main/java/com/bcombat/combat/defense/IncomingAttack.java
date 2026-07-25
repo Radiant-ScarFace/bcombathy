@@ -1,7 +1,7 @@
 package com.bcombat.combat.defense;
 
 import com.bcombat.combat.attack.AttackDirection;
-import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.entity.LivingEntity;
 
 import java.util.UUID;
 
@@ -21,7 +21,7 @@ import java.util.UUID;
  * "prevent duplicate triggering" requirement for Perfect Block.
  *
  * @param id               unique identity of this specific swing.
- * @param attacker         the attacking entity, if known. Nullable —
+ * @param attacker         the attacking entity (player or AI), if known. Nullable —
  *                          reserved for a future AI/networking system;
  *                          nothing in this phase requires it to be non-null.
  * @param direction         the strike direction the attack is coming in on.
@@ -31,13 +31,13 @@ import java.util.UUID;
  *                          nominal impact tick; both directions are
  *                          treated symmetrically by the timing windows.
  */
-public record IncomingAttack(UUID id, PlayerEntity attacker, AttackDirection direction, int ticksUntilImpact) {
+public record IncomingAttack(UUID id, LivingEntity attacker, AttackDirection direction, int ticksUntilImpact) {
 
     /**
      * Convenience constructor for callers that don't need to manage
      * identity themselves; generates a fresh id per swing.
      */
-    public IncomingAttack(PlayerEntity attacker, AttackDirection direction, int ticksUntilImpact) {
+    public IncomingAttack(LivingEntity attacker, AttackDirection direction, int ticksUntilImpact) {
         this(UUID.randomUUID(), attacker, direction, ticksUntilImpact);
     }
 }

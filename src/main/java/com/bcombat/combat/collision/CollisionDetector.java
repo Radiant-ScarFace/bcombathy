@@ -44,7 +44,7 @@ public final class CollisionDetector {
      *
      * @return the closest qualifying {@link LivingEntity}, or {@code null} if none qualify.
      */
-    public static LivingEntity findTarget(PlayerEntity attacker, double weaponReach) {
+    public static LivingEntity findTarget(LivingEntity attacker, double weaponReach) {
         World world = attacker.getWorld();
         double range = Math.max(0.0, weaponReach) * CombatConstants.DEFAULT_WEAPON_REACH_MODIFIER
                 + CombatConstants.COLLISION_REACH_TOLERANCE;
@@ -99,7 +99,7 @@ public final class CollisionDetector {
      * distinguishes a central ({@link HitLocation#TORSO}) hit from one
      * that landed toward the target's side ({@link HitLocation#ARMS}).
      */
-    public static HitLocation classifyHitLocation(PlayerEntity attacker, LivingEntity target, AttackDirection direction) {
+    public static HitLocation classifyHitLocation(LivingEntity attacker, LivingEntity target, AttackDirection direction) {
         double targetHeight = Math.max(target.getHeight(), 0.1);
         double rawFraction = (attacker.getEyeY() - target.getY()) / targetHeight;
         double biasedFraction = clamp(rawFraction + heightBiasFor(direction), 0.0, 1.0);
@@ -129,7 +129,7 @@ public final class CollisionDetector {
      * 0 are dead-center and values near/above 1 are at the target's
      * silhouette edge.
      */
-    private static double lateralOffsetFraction(PlayerEntity attacker, LivingEntity target) {
+    private static double lateralOffsetFraction(LivingEntity attacker, LivingEntity target) {
         Vec3d eyePos = attacker.getEyePos();
         Vec3d lookVec = attacker.getRotationVec(1.0f);
 

@@ -2,7 +2,6 @@ package com.bcombat.combat.damage;
 
 import com.bcombat.combat.collision.HitResult;
 import net.minecraft.entity.LivingEntity;
-import net.minecraft.entity.player.PlayerEntity;
 
 /**
  * The single reusable data container describing the fully-resolved
@@ -54,8 +53,8 @@ public record DamageResult(
         double finalDamage,
         boolean staggerTriggered) {
 
-    /** @return the player who dealt this damage. */
-    public PlayerEntity attacker() {
+    /** @return the combatant (player or AI) who dealt this damage. */
+    public LivingEntity attacker() {
         return hitResult.attacker();
     }
 

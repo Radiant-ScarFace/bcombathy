@@ -2,7 +2,6 @@ package com.bcombat.combat.collision;
 
 import com.bcombat.combat.util.CombatConstants;
 import net.minecraft.entity.LivingEntity;
-import net.minecraft.entity.player.PlayerEntity;
 
 import java.util.Optional;
 
@@ -82,7 +81,7 @@ public final class CollisionController {
      * attack's collision check resolves (target found, or window closed
      * with none found); empty every other tick.
      */
-    public Optional<CollisionOutcome> tick(PlayerEntity attacker, double weaponReach) {
+    public Optional<CollisionOutcome> tick(LivingEntity attacker, double weaponReach) {
         if (!active || resolved) {
             return Optional.empty();
         }

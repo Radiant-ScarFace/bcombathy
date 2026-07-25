@@ -15,12 +15,17 @@ import net.minecraft.world.World;
  * prediction/preview, or networked damage confirmation) can call {@link
  * DamageCalculator} without side effects.
  * <p>
- * Uses {@code World#getDamageSources().playerAttack(...)}, the same
- * vanilla damage source a normal melee attack would use, so vanilla
- * systems that already react to player-attack damage (totems, armor
- * trim toughness, absorption, death messages) continue to work
- * unmodified — this framework only changes how the amount is
- * calculated, not how the engine applies it.
+ * Uses {@code World#getDamageSources().playerAttack(...)} for a
+ * {@link PlayerEntity} attacker, or {@code
+ * World#getDamageSources().mobAttack(...)} for any other {@link
+ * LivingEntity} attacker (i.e. an AI-controlled combatant) — the same
+ * vanilla damage sources a normal melee attack or mob attack would use
+ * respectively, so vanilla systems that already react to this damage
+ * (totems, armor trim toughness, absorption, death messages) continue
+ * to work unmodified — this framework only changes how the amount is
+ * calculated, not how the engine applies it. This is also what keeps
+ * AI attackers indistinguishable from players at the damage-source
+ * level: both flow through this single method with no separate path.
  */
 public final class DamageApplier {
 
@@ -39,13 +44,15 @@ public final class DamageApplier {
      */
     public static float apply(DamageResult result) {
         LivingEntity target = result.target();
-        PlayerEntity attacker = result.attacker();
+        LivingEntity attacker = result.attacker();
         if (target == null || !target.isAlive()) {
             return 0f;
         }
 
         World world = target.getWorld();
-        DamageSource source = world.getDamageSources().playerAttack(attacker);
+        DamageSource source = attacker instanceof PlayerEntity playerAttacker
+                ? world.getDamageSources().playerAttack(playerAttacker)
+                : world.getDamageSources().mobAttack(attacker);
 
         float amount = (float) result.finalDamage();
         target.damage(source, amount);

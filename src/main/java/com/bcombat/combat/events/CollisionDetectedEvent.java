@@ -2,7 +2,6 @@ package com.bcombat.combat.events;
 
 import com.bcombat.combat.attack.AttackDirection;
 import net.minecraft.entity.LivingEntity;
-import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.item.Item;
 
 /**
@@ -13,10 +12,10 @@ import net.minecraft.item.Item;
  * (VFX, sound cues, AI reactions) that care about "something was struck"
  * independent of the eventual hit/blocked outcome.
  *
- * @param attacker   the player who threw the attack.
+ * @param attacker   the combatant (player or AI) who threw the attack.
  * @param target     the entity the collision check found.
  * @param direction  the attack direction committed for this swing.
  * @param weaponItem the item that performed the attack, or {@code null} if unarmed.
  */
-public record CollisionDetectedEvent(PlayerEntity attacker, LivingEntity target, AttackDirection direction, Item weaponItem) {
+public record CollisionDetectedEvent(LivingEntity attacker, LivingEntity target, AttackDirection direction, Item weaponItem) {
 }
