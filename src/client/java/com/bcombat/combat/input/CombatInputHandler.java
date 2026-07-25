@@ -1,8 +1,12 @@
 package com.bcombat.combat.input;
 
+import com.bcombat.combat.attack.AttackDirection;
+import com.bcombat.combat.block.GuardDirection;
 import com.bcombat.combat.controller.CombatController;
 import com.bcombat.combat.controller.CombatControllerManager;
 import com.bcombat.combat.state.CombatState;
+import com.bcombat.client.network.ClientCombatNetworking;
+import com.bcombat.network.packet.CombatActionType;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.minecraft.client.MinecraftClient;
 
@@ -67,8 +71,10 @@ public final class CombatInputHandler {
 
         if (isCombatKeyDown && !wasCombatKeyDown) {
             controller.requestEnterCombat();
+            ClientCombatNetworking.sendAction(CombatActionType.ENTER_COMBAT);
         } else if (!isCombatKeyDown && wasCombatKeyDown) {
             controller.requestExitCombat();
+            ClientCombatNetworking.sendAction(CombatActionType.EXIT_COMBAT);
         }
         wasCombatKeyDown = isCombatKeyDown;
 
@@ -91,6 +97,7 @@ public final class CombatInputHandler {
         if (state == CombatState.RECOVERY) {
             if (client.options.attackKey.isPressed()) {
                 controller.bufferNextAttack();
+                ClientCombatNetworking.sendAction(CombatActionType.BUFFER_NEXT_ATTACK);
             }
             wasAttackKeyDown = false;
             return;
@@ -103,6 +110,7 @@ public final class CombatInputHandler {
         // reads naturally as "pull back" during a wind-up.
         if (state == CombatState.PREPARING_ATTACK && client.player.isSneaking()) {
             controller.cancelPrepareAttack();
+            ClientCombatNetworking.sendAction(CombatActionType.CANCEL_PREPARE_ATTACK);
             attackDirectionTracker.end();
             wasAttackKeyDown = false;
             return;
@@ -114,15 +122,25 @@ public final class CombatInputHandler {
 
         if (isAttackKeyDown && !wasAttackKeyDown) {
             controller.requestPrepareAttack();
+            ClientCombatNetworking.sendAction(CombatActionType.PREPARE_ATTACK);
             if (controller.getCombatState() == CombatState.PREPARING_ATTACK) {
                 attackDirectionTracker.begin(client.player);
             }
         } else if (!isAttackKeyDown && wasAttackKeyDown && state == CombatState.PREPARING_ATTACK) {
             controller.releaseAttack();
+            ClientCombatNetworking.sendAction(CombatActionType.RELEASE_ATTACK);
         }
 
         if (state == CombatState.PREPARING_ATTACK) {
-            controller.updateAttackDirection(attackDirectionTracker.resolve(client.player));
+            AttackDirection previousDirection = controller.getAttackDirection();
+            AttackDirection resolved = attackDirectionTracker.resolve(client.player);
+            controller.updateAttackDirection(resolved);
+            // Only send when the committed direction actually changed,
+            // to keep wind-up direction tracking cheap on the wire - see
+            // AttackDirectionC2SPacket's class docs.
+            if (controller.getAttackDirection() != previousDirection) {
+                ClientCombatNetworking.sendAttackDirection(controller.getAttackDirection());
+            }
         } else {
             attackDirectionTracker.end();
         }
@@ -141,12 +159,14 @@ public final class CombatInputHandler {
 
         if (isBlockKeyDown && !wasBlockKeyDown && state == CombatState.COMBAT_IDLE) {
             controller.requestEnterBlock();
+            ClientCombatNetworking.sendAction(CombatActionType.ENTER_BLOCK);
             if (controller.getCombatState() == CombatState.ENTER_BLOCK) {
                 guardDirectionTracker.begin(client.player);
             }
         } else if (!isBlockKeyDown && wasBlockKeyDown
                 && (state == CombatState.ENTER_BLOCK || state == CombatState.BLOCK_IDLE)) {
             controller.requestExitBlock();
+            ClientCombatNetworking.sendAction(CombatActionType.EXIT_BLOCK);
             guardDirectionTracker.end();
         }
 
@@ -156,7 +176,12 @@ public final class CombatInputHandler {
         // tick rather than one tick later.
         state = controller.getCombatState();
         if (state == CombatState.ENTER_BLOCK || state == CombatState.BLOCK_IDLE) {
-            controller.updateGuardDirection(guardDirectionTracker.resolve(client.player));
+            GuardDirection previousGuard = controller.getGuardDirection();
+            GuardDirection resolved = guardDirectionTracker.resolve(client.player);
+            controller.updateGuardDirection(resolved);
+            if (controller.getGuardDirection() != previousGuard) {
+                ClientCombatNetworking.sendGuardDirection(controller.getGuardDirection());
+            }
         } else {
             guardDirectionTracker.end();
         }

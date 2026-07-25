@@ -6,6 +6,7 @@ import com.bcombat.combat.weapon.DefaultWeaponRegistrations;
 import com.bcombat.command.BCombatCommand;
 import com.bcombat.config.BCombatConfig;
 import com.bcombat.debug.CombatDebugLogger;
+import com.bcombat.network.ServerCombatNetworking;
 import com.bcombat.server.ServerCombatLifecycleHandler;
 import com.bcombat.server.ServerCombatTickHandler;
 
@@ -56,6 +57,15 @@ public class BannerlordCombat implements ModInitializer {
 		// keeps damage calculation fully decoupled from collision
 		// detection.
 		DamageService.register();
+
+		// Registers the C2S/S2C packet channels that carry every
+		// CombatController request and authoritative sync snapshot
+		// between client and server. Without this, the client's
+		// predictive controller calls never reach the server's
+		// authoritative controller, so combat state never actually
+		// advances server-side - see ServerCombatNetworking's class
+		// docs for the full rationale.
+		ServerCombatNetworking.register();
 
 		// Drives every tracked server-side CombatController (players and
 		// AI-enabled mobs alike) once per server tick, after first

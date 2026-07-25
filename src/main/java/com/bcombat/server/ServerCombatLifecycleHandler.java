@@ -93,6 +93,7 @@ public final class ServerCombatLifecycleHandler {
 
     private static void onPlayerDisconnect(ServerPlayNetworkHandler handler, MinecraftServer server) {
         CombatControllerManager.removeServer(handler.player.getUuid());
+        com.bcombat.network.ServerCombatNetworking.forget(handler.player.getUuid());
     }
 
     private static void onPlayerRespawn(ServerPlayerEntity oldPlayer, ServerPlayerEntity newPlayer, boolean alive) {
@@ -101,6 +102,7 @@ public final class ServerCombatLifecycleHandler {
         // combat state is meaningless once dead) and create a brand new
         // one for the instance that actually keeps playing.
         CombatControllerManager.removeServer(oldPlayer.getUuid());
+        com.bcombat.network.ServerCombatNetworking.forget(oldPlayer.getUuid());
         CombatControllerManager.get(newPlayer);
     }
 
@@ -123,6 +125,7 @@ public final class ServerCombatLifecycleHandler {
     private static void onServerStopped(MinecraftServer server) {
         AICombatManager.clear();
         CombatControllerManager.clearServer();
+        com.bcombat.network.ServerCombatNetworking.clear();
         BannerlordCombat.LOGGER.info("Combat framework registries cleared on server stop.");
     }
 }
