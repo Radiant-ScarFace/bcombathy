@@ -142,6 +142,136 @@ public final class CombatController {
         return authoritative;
     }
 
+    /** @return the player entity this controller drives. */
+    public PlayerEntity getPlayer() {
+        return player;
+    }
+
+    // ------------------------------------------------------------------
+    // Networking - snapshot capture/apply. Capture is only ever called
+    // on the authoritative (server) instance, by com.bcombat.network's
+    // per-tick broadcaster. Apply is only ever called on a
+    // non-authoritative instance (the local player's predictive copy, or
+    // a remote player's purely network-driven mirror), by the client's
+    // packet receiver - see CombatSyncSnapshot/StaminaSyncSnapshot's
+    // class docs for the full rationale.
+    // ------------------------------------------------------------------
+
+    /**
+     * Captures a wire-friendly snapshot of everything a receiving client
+     * needs to bring itself in line with this authoritative controller.
+     * See {@link CombatSyncSnapshot}'s class docs for exactly what is
+     * (and deliberately isn't) included.
+     */
+    public CombatSyncSnapshot captureSnapshot() {
+        return new CombatSyncSnapshot(
+                player.getUuid(),
+                stateManager.getCurrentState(),
+                attackDirection,
+                blockController.getCurrentDirection(),
+                movementMode,
+                transitionTicksRemaining
+        );
+    }
+
+    /**
+     * Applies a {@link CombatSyncSnapshot} received from the server,
+     * bringing this non-authoritative controller's state, committed
+     * attack direction, locked guard direction, movement mode, and
+     * transition timer in line with the server's authoritative copy.
+     * No-op on the authoritative instance itself, which is always the
+     * source of truth and must never be second-guessed by a stale/looped
+     * packet.
+     * <p>
+     * The state transition is applied via {@link
+     * CombatStateManager#forceTransitionTo}, bypassing the transition
+     * graph entirely, since the server has already validated the
+     * transition and this instance must simply mirror it rather than
+     * risk silently rejecting a legitimate authoritative change (exactly
+     * the same reasoning documented on {@link
+     * BlockController#forceDirection}). This still fires {@link
+     * #onStateTransition} and therefore the usual {@code
+     * CombatStateChangedEvent} and friends, so animation and HUD code
+     * react identically regardless of whether the transition happened
+     * locally or arrived over the network - only the movement-speed
+     * side effects inside {@link #onStateTransition} are skipped, since
+     * those are gated to {@link #authoritative} directly.
+     */
+    public void applySnapshot(CombatSyncSnapshot snapshot) {
+        Objects.requireNonNull(snapshot, "snapshot must not be null");
+        if (authoritative) {
+            return;
+        }
+        if (!snapshot.playerId().equals(player.getUuid())) {
+            return;
+        }
+
+        if (snapshot.state() != stateManager.getCurrentState()) {
+            stateManager.forceTransitionTo(snapshot.state());
+        }
+
+        if (attackDirection != snapshot.attackDirection()) {
+            AttackDirection previous = attackDirection;
+            attackDirection = snapshot.attackDirection();
+            CombatEvents.ATTACK_DIRECTION_CHANGED.invoker()
+                    .onAttackDirectionChanged(new AttackDirectionChangedEvent(player, previous, attackDirection));
+        }
+
+        if (blockController.getCurrentDirection() != snapshot.guardDirection()) {
+            GuardDirection previous = blockController.getCurrentDirection();
+            blockController.forceDirection(snapshot.guardDirection());
+            CombatEvents.GUARD_DIRECTION_CHANGED.invoker()
+                    .onGuardDirectionChanged(new GuardDirectionChangedEvent(player, previous, snapshot.guardDirection()));
+        }
+
+        setMovementMode(snapshot.movementMode());
+        transitionTicksRemaining = snapshot.transitionTicksRemaining();
+    }
+
+    /**
+     * Captures a wire-friendly snapshot of this authoritative
+     * controller's current stamina/exhaustion, for the server's
+     * lower-frequency, throttled stamina broadcast. See {@link
+     * StaminaSyncSnapshot}'s class docs.
+     */
+    public StaminaSyncSnapshot captureStaminaSnapshot() {
+        return new StaminaSyncSnapshot(
+                player.getUuid(),
+                staminaController.getCurrentStamina(),
+                staminaController.getMaxStamina(),
+                staminaController.isExhausted()
+        );
+    }
+
+    /**
+     * Applies a {@link StaminaSyncSnapshot} received from the server via
+     * {@link StaminaController#applyAuthoritative}, and reports the
+     * result through {@link #reportStaminaChange} exactly like a locally
+     * driven stamina change would, so HUD/sound listeners never need to
+     * distinguish a networked correction from a local one. No-op on the
+     * authoritative instance itself.
+     */
+    public void applyStaminaSnapshot(StaminaSyncSnapshot snapshot) {
+        Objects.requireNonNull(snapshot, "snapshot must not be null");
+        if (authoritative) {
+            return;
+        }
+        if (!snapshot.playerId().equals(player.getUuid())) {
+            return;
+        }
+
+        double previousStamina = staminaController.getCurrentStamina();
+        ExhaustionState previousExhaustion = staminaController.getExhaustionState();
+
+        staminaController.applyAuthoritative(
+                snapshot.currentStamina(),
+                snapshot.maxStamina(),
+                snapshot.exhausted() ? ExhaustionState.EXHAUSTED : ExhaustionState.NORMAL
+        );
+
+        reportStaminaChange(previousStamina, staminaController.getCurrentStamina(), previousExhaustion);
+    }
+
     // ------------------------------------------------------------------
     // Stamina - a thin wrapper around StaminaController that turns every
     // consumption/regeneration into the StaminaChangedEvent/
@@ -196,8 +326,17 @@ public final class CombatController {
         ExhaustionState currentExhaustion = staminaController.getExhaustionState();
         if (currentExhaustion != previousExhaustion) {
             if (currentExhaustion.isExhausted()) {
+                // See the ENTERING_COMBAT branch of onStateTransition for
+                // why every movement-speed mutation is confined to the
+                // authoritative instance.
+                if (authoritative) {
+                    movementModifierManager.enableExhaustionPenalty(player);
+                }
                 CombatEvents.EXHAUSTION_STARTED.invoker().onExhaustionStarted(new ExhaustionStartedEvent(player));
             } else {
+                if (authoritative) {
+                    movementModifierManager.disableExhaustionPenalty(player);
+                }
                 CombatEvents.EXHAUSTION_ENDED.invoker().onExhaustionEnded(new ExhaustionEndedEvent(player));
             }
         }
@@ -628,7 +767,12 @@ public final class CombatController {
         applyGuardConditions();
         updateEquippedWeapon();
         advanceTransitionTimers();
-        movementModifierManager.tick(player);
+        // See the ENTERING_COMBAT branch of onStateTransition for why
+        // every movement-speed mutation is confined to the authoritative
+        // instance.
+        if (authoritative) {
+            movementModifierManager.tick(player);
+        }
         blockController.tick();
         tickCollision();
         tickStamina();
@@ -891,7 +1035,15 @@ public final class CombatController {
         if (previous == CombatState.NORMAL && current == CombatState.ENTERING_COMBAT) {
             transitionTicksRemaining = CombatConstants.ENTER_COMBAT_TRANSITION_TICKS;
             setMovementMode(MovementMode.COMBAT);
-            movementModifierManager.enableCombatMovement(player);
+            // Movement speed is a synchronized entity attribute: mutating
+            // it only on the authoritative (server) instance and letting
+            // vanilla's own attribute sync push the result to every
+            // client - including the owning client's own player entity -
+            // is what keeps this correct in multiplayer without a
+            // bespoke packet. See MovementModifierManager's class docs.
+            if (authoritative) {
+                movementModifierManager.enableCombatMovement(player);
+            }
             CombatEvents.COMBAT_ENTER.invoker().onCombatEnter(new CombatEnterEvent(player));
         }
 
@@ -902,13 +1054,17 @@ public final class CombatController {
 
         if (current == CombatState.NORMAL) {
             setMovementMode(MovementMode.NORMAL);
-            movementModifierManager.disableCombatMovement(player);
+            if (authoritative) {
+                movementModifierManager.disableCombatMovement(player);
+            }
             nextAttackBuffered = false;
             blockController.reset();
         }
 
         if (current == CombatState.PREPARING_ATTACK) {
-            movementModifierManager.enableWindUpPenalty(player);
+            if (authoritative) {
+                movementModifierManager.enableWindUpPenalty(player);
+            }
         } else if (previous == CombatState.PREPARING_ATTACK) {
             // Covers every way a wind-up can end: release into ATTACKING,
             // a cancelled wind-up back to COMBAT_IDLE, or a forced exit.
@@ -916,7 +1072,9 @@ public final class CombatController {
             // path leads all the way to NORMAL, but that call only fires
             // for that specific branch, so this is the single place that
             // guarantees the penalty never outlives PREPARING_ATTACK.
-            movementModifierManager.disableWindUpPenalty(player);
+            if (authoritative) {
+                movementModifierManager.disableWindUpPenalty(player);
+            }
         }
 
         // Server authority: collision windows only ever open/resolve on
