@@ -90,4 +90,19 @@ public final class BlockController {
     public GuardDirection getCurrentDirection() {
         return currentDirection;
     }
+
+    /**
+     * Directly sets the locked guard direction, bypassing {@link
+     * #requestDirection}'s debounce entirely. Reserved for exactly one
+     * caller: a network-driven {@code CombatController} applying an
+     * authoritative {@code CombatSyncSnapshot} received from the server.
+     * The debounce exists to smooth local mouse-movement jitter; it has
+     * no meaning once the server has already resolved a value, so
+     * reusing {@link #requestDirection} there would risk silently
+     * rejecting a legitimate authoritative change.
+     */
+    public void forceDirection(GuardDirection direction) {
+        currentDirection = direction;
+        ticksSinceDirectionChange = CombatConstants.GUARD_SWITCH_DELAY_TICKS;
+    }
 }

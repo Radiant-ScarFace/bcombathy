@@ -72,6 +72,30 @@ import java.util.Objects;
 public final class CombatController {
 
     private final PlayerEntity player;
+
+    /**
+     * True only for the single server-side instance that owns this
+     * player's real combat outcome (a {@code ServerPlayerEntity} on the
+     * logical server, including the integrated singleplayer server).
+     * False for every client-side instance: the local player's
+     * predictive copy (driven by input, corrected by {@link
+     * #applySnapshot}/{@link #applyStaminaSnapshot}) and every remote
+     * player's purely network-driven mirror.
+     * <p>
+     * This is the single flag that satisfies "server authority for
+     * combat validation": collision detection and its resulting
+     * hit/miss/blocked events - the only path that ever mutates health
+     * via {@code DamageApplier} - are gated to authoritative instances
+     * only (see {@link #tickCollision()} and the {@code ATTACKING}
+     * branch of {@link #onStateTransition}). Every other subsystem
+     * (state machine timing, animation, movement penalties, stamina)
+     * intentionally still runs identically on both sides, since running
+     * the same deterministic logic client-side is exactly what makes
+     * local prediction and remote-player mirroring possible without any
+     * bespoke replay/interpolation system.
+     */
+    private final boolean authoritative;
+
     private final CombatStateManager stateManager = new CombatStateManager();
     private final MovementModifierManager movementModifierManager = new MovementModifierManager();
     private final AnimationController animationController = new AnimationController();
@@ -107,9 +131,76 @@ public final class CombatController {
      */
     private UUID lastHandledAttackId;
 
-    public CombatController(PlayerEntity player) {
+    public CombatController(PlayerEntity player, boolean authoritative) {
         this.player = player;
+        this.authoritative = authoritative;
         this.stateManager.setOnTransition(this::onStateTransition);
+    }
+
+    /** @return true if this is the server's authoritative instance for {@code player} - see {@link #authoritative}. */
+    public boolean isAuthoritative() {
+        return authoritative;
+    }
+
+    // ------------------------------------------------------------------
+    // Stamina - a thin wrapper around StaminaController that turns every
+    // consumption/regeneration into the StaminaChangedEvent/
+    // StaminaDepletedEvent/StaminaRegeneratedEvent/ExhaustionStarted-
+    // /EndedEvent quintet CombatEvents already declares for it. Kept
+    // here (rather than inside StaminaController itself) for exactly
+    // the same reason every other sub-controller stays event-agnostic -
+    // see BlockController and ChamberController's class docs.
+    // ------------------------------------------------------------------
+
+    /**
+     * Deducts {@code amount} stamina for a single discrete action (a
+     * Perfect Block, a Parry, a Chamber, and - once a future attack
+     * phase wires it in - an attack itself), via {@link
+     * StaminaController#consume}, and reports the result through {@link
+     * #reportStaminaChange}.
+     */
+    private void consumeStaminaForAction(double amount) {
+        double previousStamina = staminaController.getCurrentStamina();
+        ExhaustionState previousExhaustion = staminaController.getExhaustionState();
+
+        double currentStamina = staminaController.consume(amount);
+
+        reportStaminaChange(previousStamina, currentStamina, previousExhaustion);
+    }
+
+    /**
+     * Fires {@link StaminaChangedEvent} if {@code currentStamina} differs
+     * from {@code previousStamina}, plus whichever of {@link
+     * StaminaDepletedEvent}, {@link StaminaRegeneratedEvent}, {@link
+     * ExhaustionStartedEvent}, or {@link ExhaustionEndedEvent} the
+     * transition also crossed - the single place both {@link
+     * #consumeStaminaForAction} and {@link #tickStamina} report through,
+     * so a future listener (HUD, sound, networking) subscribes once and
+     * sees every stamina change the same way regardless of its cause.
+     */
+    private void reportStaminaChange(double previousStamina, double currentStamina, ExhaustionState previousExhaustion) {
+        if (currentStamina == previousStamina) {
+            return;
+        }
+
+        double maxStamina = staminaController.getMaxStamina();
+        CombatEvents.STAMINA_CHANGED.invoker()
+                .onStaminaChanged(new StaminaChangedEvent(player, previousStamina, currentStamina, maxStamina));
+
+        if (previousStamina > 0.0 && currentStamina <= 0.0) {
+            CombatEvents.STAMINA_DEPLETED.invoker().onStaminaDepleted(new StaminaDepletedEvent(player));
+        } else if (previousStamina < maxStamina && currentStamina >= maxStamina) {
+            CombatEvents.STAMINA_REGENERATED.invoker().onStaminaRegenerated(new StaminaRegeneratedEvent(player));
+        }
+
+        ExhaustionState currentExhaustion = staminaController.getExhaustionState();
+        if (currentExhaustion != previousExhaustion) {
+            if (currentExhaustion.isExhausted()) {
+                CombatEvents.EXHAUSTION_STARTED.invoker().onExhaustionStarted(new ExhaustionStartedEvent(player));
+            } else {
+                CombatEvents.EXHAUSTION_ENDED.invoker().onExhaustionEnded(new ExhaustionEndedEvent(player));
+            }
+        }
     }
 
     // ------------------------------------------------------------------
@@ -540,7 +631,45 @@ public final class CombatController {
         movementModifierManager.tick(player);
         blockController.tick();
         tickCollision();
+        tickStamina();
         animationController.tick(player, stateManager.getCurrentState(), movementMode, attackDirection, blockController.getCurrentDirection());
+    }
+
+    /**
+     * Advances stamina regeneration by one tick via {@link
+     * StaminaController#tick}, honoring the equipped weapon's regen
+     * modifiers exactly the way {@link #effectiveWindUpTicks()} and
+     * friends already combine weapon modifiers with base timing.
+     * Regeneration is suspended while the player is actively spending
+     * effort (mid wind-up, mid swing, or holding a block) - see {@link
+     * #isStaminaRegenSuspended()}. Reports the result through {@link
+     * #reportStaminaChange} exactly like {@link #consumeStaminaForAction}
+     * does, so listeners never need to distinguish consumption from
+     * regeneration.
+     */
+    private void tickStamina() {
+        double previousStamina = staminaController.getCurrentStamina();
+        ExhaustionState previousExhaustion = staminaController.getExhaustionState();
+
+        WeaponProperties weapon = weaponController.getCurrentWeapon();
+        staminaController.tick(isStaminaRegenSuspended(), weapon.staminaRegenDelayModifier(), weapon.staminaRegenRateModifier());
+
+        reportStaminaChange(previousStamina, staminaController.getCurrentStamina(), previousExhaustion);
+    }
+
+    /**
+     * @return true while the current combat state represents actively
+     * spending effort - mid wind-up, mid swing, or holding a raised
+     * guard - during which stamina regeneration is withheld regardless
+     * of the post-consumption delay {@link StaminaController} also
+     * tracks internally.
+     */
+    private boolean isStaminaRegenSuspended() {
+        CombatState state = stateManager.getCurrentState();
+        return state == CombatState.PREPARING_ATTACK
+                || state == CombatState.ATTACKING
+                || state == CombatState.ENTER_BLOCK
+                || state == CombatState.BLOCK_IDLE;
     }
 
     /**
@@ -550,6 +679,19 @@ public final class CombatController {
      * the release phase.
      */
     private void tickCollision() {
+        // Server authority: only the authoritative instance ever detects
+        // a hit, since resolveCollisionOutcome() is the sole path that
+        // fires AttackHitEvent/AttackBlockedEvent/AttackMissEvent, and
+        // DamageService reacts to AttackHitEvent by mutating real health.
+        // A non-authoritative instance (local prediction or a remote
+        // mirror) never runs its own collision detection at all - it
+        // only ever learns the outcome once the server's hit/miss/block
+        // events reach it through whatever future feedback packet a
+        // client listens for (see CombatSyncSnapshot/StaminaSyncSnapshot's
+        // docs and com.bcombat.network's class docs).
+        if (!authoritative) {
+            return;
+        }
         if (stateManager.getCurrentState() != CombatState.ATTACKING) {
             return;
         }
@@ -777,17 +919,24 @@ public final class CombatController {
             movementModifierManager.disableWindUpPenalty(player);
         }
 
-        if (current == CombatState.ATTACKING) {
-            // Collision checks only ever run during the release phase
-            // (ATTACKING) - see CollisionController's class docs.
-            collisionController.beginWindow(attackingDurationTicks);
-        } else if (previous == CombatState.ATTACKING) {
-            // Guarantees every attack resolves to a hit/blocked/miss
-            // outcome even if ATTACKING's duration is short enough that
-            // tick() never gets a chance to close the window itself;
-            // a no-op if tick() already resolved it naturally.
-            collisionController.forceResolve().ifPresent(this::resolveCollisionOutcome);
-            collisionController.reset();
+        // Server authority: collision windows only ever open/resolve on
+        // the authoritative instance - see tickCollision()'s docs for
+        // why. A non-authoritative instance still transitions through
+        // ATTACKING on schedule (for animation/prediction), it just
+        // never opens a detection window for it.
+        if (authoritative) {
+            if (current == CombatState.ATTACKING) {
+                // Collision checks only ever run during the release phase
+                // (ATTACKING) - see CollisionController's class docs.
+                collisionController.beginWindow(attackingDurationTicks);
+            } else if (previous == CombatState.ATTACKING) {
+                // Guarantees every attack resolves to a hit/blocked/miss
+                // outcome even if ATTACKING's duration is short enough that
+                // tick() never gets a chance to close the window itself;
+                // a no-op if tick() already resolved it naturally.
+                collisionController.forceResolve().ifPresent(this::resolveCollisionOutcome);
+                collisionController.reset();
+            }
         }
 
         if (current == CombatState.RECOVERY) {

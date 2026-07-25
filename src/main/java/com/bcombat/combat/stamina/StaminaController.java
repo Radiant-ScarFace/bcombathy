@@ -179,6 +179,21 @@ public final class StaminaController {
         return exhaustionState.isExhausted();
     }
 
+    /**
+     * Directly overwrites current/maximum stamina and exhaustion state,
+     * bypassing {@link #consume}/{@link #tick}'s own bookkeeping (the
+     * post-consumption regen delay is left untouched). Reserved for
+     * exactly one caller: a network-driven {@code CombatController} on a
+     * non-authoritative (client) instance applying a {@code
+     * StaminaSyncSnapshot} received from the server, which is already
+     * the true value and must never be second-guessed locally.
+     */
+    public void applyAuthoritative(double currentStamina, double maxStamina, ExhaustionState exhaustionState) {
+        this.maxStamina = Math.max(0.0, maxStamina);
+        this.currentStamina = Math.max(0.0, Math.min(currentStamina, this.maxStamina));
+        this.exhaustionState = exhaustionState;
+    }
+
     public double getBonusRegenRateMultiplier() {
         return bonusRegenRateMultiplier;
     }
