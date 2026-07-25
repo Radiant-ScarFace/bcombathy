@@ -1,5 +1,6 @@
 package com.bcombat.client;
 
+import com.bcombat.client.animation.CombatAnimationTicker;
 import com.bcombat.client.feedback.CombatFeedbackManager;
 import com.bcombat.client.hud.DirectionalCombatIndicatorRenderer;
 import com.bcombat.client.network.ClientCombatNetworking;
@@ -31,6 +32,16 @@ public class BannerlordCombatClient implements ClientModInitializer {
 		// entry point every future system should build against.
 		CombatKeyBindings.register();
 		CombatInputHandler.register();
+
+		// Ticks every OTHER client-side CombatController (remote players,
+		// AI-controlled combatants) once per client tick, so their
+		// network-mirrored combat state actually animates smoothly
+		// between corrections instead of sitting frozen - the local
+		// player's own controller is already ticked above by
+		// CombatInputHandler. Also drives the per-tick pose cache the
+		// combat animation renderer samples from every frame. See
+		// CombatAnimationTicker's class docs.
+		CombatAnimationTicker.register();
 
 		// Wires every Combat Effects & Feedback Framework subsystem
 		// (hit stop, camera shake, sound, particles, weapon trails) to

@@ -15,6 +15,7 @@ import net.fabricmc.fabric.api.networking.v1.PacketByteBufs;
 import net.fabricmc.fabric.api.networking.v1.PlayerLookup;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
 
+import net.minecraft.entity.LivingEntity;
 import net.minecraft.network.PacketByteBuf;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.network.ServerPlayerEntity;
@@ -122,42 +123,55 @@ public final class ServerCombatNetworking {
         tickCounter++;
 
         for (CombatController controller : CombatControllerManager.serverControllers()) {
-            if (!controller.isPlayer()) {
-                // Remote (AI mob) mirrors are out of scope for this
-                // networking pass - AI combat is fully server-driven and
-                // presented to nearby players via vanilla entity
-                // rendering, so only real players need their state
-                // mirrored to clients.
-                continue;
-            }
-            ServerPlayerEntity player = (ServerPlayerEntity) controller.getPlayer();
-            if (player == null) {
-                continue;
-            }
+            // Widened to every authoritative combatant - real players
+            // AND AI-controlled mobs driven by AICombatController - so
+            // AI combat state (wind-up, release, blocking, etc.) is
+            // mirrored to nearby clients exactly the way a player's
+            // already is, letting the client-side render pipeline
+            // (CombatAnimationApplier/CombatPoseCache) animate AI
+            // combatants too. This reuses the exact same
+            // CombatSyncSnapshot/CombatSyncS2CPacket machinery below -
+            // no new packet type, no networking redesign.
+            LivingEntity subject = controller.getEntity();
 
             CombatSyncSnapshot snapshot = controller.captureSnapshot();
-            CombatSyncSnapshot previous = LAST_BROADCAST.get(player.getUuid());
+            CombatSyncSnapshot previous = LAST_BROADCAST.get(subject.getUuid());
             if (!snapshot.equals(previous)) {
-                LAST_BROADCAST.put(player.getUuid(), snapshot);
-                broadcastCombatSync(player, snapshot);
+                LAST_BROADCAST.put(subject.getUuid(), snapshot);
+                broadcastCombatSync(subject, snapshot);
             }
 
-            if (tickCounter % STAMINA_SYNC_INTERVAL_TICKS == 0) {
-                sendStaminaSync(player, controller.captureStaminaSnapshot());
+            if (controller.isPlayer() && tickCounter % STAMINA_SYNC_INTERVAL_TICKS == 0) {
+                ServerPlayerEntity player = (ServerPlayerEntity) controller.getPlayer();
+                if (player != null) {
+                    sendStaminaSync(player, controller.captureStaminaSnapshot());
+                }
             }
         }
     }
 
-    private static void broadcastCombatSync(ServerPlayerEntity subject, CombatSyncSnapshot snapshot) {
-        PacketByteBuf buf = PacketByteBufs.create();
-        new CombatSyncS2CPacket(snapshot).write(buf);
+    /**
+     * Broadcasts {@code snapshot} to every client that needs it: the
+     * subject themselves for local-prediction reconciliation (only
+     * meaningful - and only possible - when the subject is a real,
+     * connected {@link ServerPlayerEntity}), plus every player currently
+     * tracking the subject entity via vanilla's own {@link
+     * PlayerLookup#tracking}, which works identically for a player
+     * subject or an AI-controlled mob subject.
+     */
+    private static void broadcastCombatSync(LivingEntity subject, CombatSyncSnapshot snapshot) {
+        if (subject instanceof ServerPlayerEntity selfPlayer) {
+            PacketByteBuf buf = PacketByteBufs.create();
+            new CombatSyncS2CPacket(snapshot).write(buf);
+            ServerPlayNetworking.send(selfPlayer, CombatNetworking.S2C_COMBAT_SYNC, buf);
+        }
 
-        // The subject themselves, for local-prediction reconciliation...
-        ServerPlayNetworking.send(subject, CombatNetworking.S2C_COMBAT_SYNC, buf);
-
-        // ...plus every other player currently tracking this entity, so
-        // their client-side mirror of the subject animates/reacts too.
         for (ServerPlayerEntity observer : PlayerLookup.tracking(subject)) {
+            if (observer == subject) {
+                // Already sent above - avoid double-delivering the same
+                // tick's snapshot to a player observing themselves.
+                continue;
+            }
             PacketByteBuf observerBuf = PacketByteBufs.create();
             new CombatSyncS2CPacket(snapshot).write(observerBuf);
             ServerPlayNetworking.send(observer, CombatNetworking.S2C_COMBAT_SYNC, observerBuf);

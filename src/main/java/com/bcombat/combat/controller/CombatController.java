@@ -789,6 +789,102 @@ public final class CombatController {
         return blockController.getCurrentDirection();
     }
 
+    // ------------------------------------------------------------------
+    // Animation timing read-only accessors — the public surface the
+    // client-side procedural renderer (com.bcombat.client.animation)
+    // uses to compute anticipation/follow-through curves for the
+    // current state without duplicating any timing logic already owned
+    // by this class. Mirrors the read-only-accessor pattern already
+    // used above for combat state/stamina/mount info; none of these
+    // expose a mutation entry point.
+    // ------------------------------------------------------------------
+
+    /**
+     * @return ticks remaining in whatever transition-timed state is
+     * currently active (e.g. {@code PREPARING_ATTACK}, {@code RECOVERY},
+     * {@code ENTER_BLOCK}...). {@code 0} once the state has fully
+     * resolved. Combine with the matching duration accessor/constant to
+     * derive a 0-1 progress fraction — see {@link #getWindUpProgress()}
+     * and {@link #getRecoveryProgress()} for the two cases the renderer
+     * needs most.
+     */
+    public int getTransitionTicksRemaining() {
+        return transitionTicksRemaining;
+    }
+
+    /** @return ticks elapsed since the current (or most recent) wind-up began. */
+    public int getWindUpTicksElapsed() {
+        return windUpTicksElapsed;
+    }
+
+    /** @return this weapon/mount-scaled wind-up's full duration in ticks — see {@link #effectiveWindUpTicks()}. */
+    public int getEffectiveWindUpTicks() {
+        return effectiveWindUpTicks();
+    }
+
+    /**
+     * @return 0-1 progress through the current wind-up, for the
+     * renderer's anticipation curve. {@code 0.0} outside {@code
+     * PREPARING_ATTACK}.
+     */
+    public float getWindUpProgress() {
+        if (stateManager.getCurrentState() != CombatState.PREPARING_ATTACK) {
+            return 0.0f;
+        }
+        int total = Math.max(1, effectiveWindUpTicks());
+        return net.minecraft.util.math.MathHelper.clamp(windUpTicksElapsed / (float) total, 0.0f, 1.0f);
+    }
+
+    /**
+     * @return the weapon/mount-scaled duration, in ticks, of the current
+     * (or most recent) {@code ATTACKING} state — see {@link
+     * #attackingDurationTicks}.
+     */
+    public int getAttackingDurationTicks() {
+        return attackingDurationTicks;
+    }
+
+    /**
+     * @return 0-1 progress through the current attack release, for the
+     * renderer's follow-through curve. {@code 0.0} outside {@code
+     * ATTACKING}.
+     */
+    public float getReleaseProgress() {
+        if (stateManager.getCurrentState() != CombatState.ATTACKING) {
+            return 0.0f;
+        }
+        int total = Math.max(1, attackingDurationTicks);
+        return net.minecraft.util.math.MathHelper.clamp(1.0f - (transitionTicksRemaining / (float) total), 0.0f, 1.0f);
+    }
+
+    /**
+     * @return 0-1 progress through the current recovery, for the
+     * renderer's settle-back-to-idle curve. {@code 0.0} outside {@code
+     * RECOVERY}.
+     */
+    public float getRecoveryProgress() {
+        if (stateManager.getCurrentState() != CombatState.RECOVERY) {
+            return 0.0f;
+        }
+        int total = Math.max(1, effectiveRecoveryTicks());
+        return net.minecraft.util.math.MathHelper.clamp(1.0f - (transitionTicksRemaining / (float) total), 0.0f, 1.0f);
+    }
+
+    /**
+     * @return 0-1 progress through whatever transition-timed state is
+     * currently active, generically — for states not covered by the
+     * dedicated wind-up/release/recovery accessors above (e.g. {@code
+     * ENTERING_COMBAT}, {@code ENTER_BLOCK}, {@code CHAMBER_PREPARE}).
+     * The renderer supplies {@code totalTicks} itself, typically read
+     * straight off the matching {@code CombatConstants} field, since
+     * those durations aren't weapon-scaled and therefore need no
+     * dedicated accessor here.
+     */
+    public float getGenericTransitionProgress(int totalTicks) {
+        int total = Math.max(1, totalTicks);
+        return net.minecraft.util.math.MathHelper.clamp(1.0f - (transitionTicksRemaining / (float) total), 0.0f, 1.0f);
+    }
+
     /**
      * @return the item currently held in the main hand, or {@code null}
      * for an empty hand.
@@ -898,7 +994,7 @@ public final class CombatController {
         blockController.tick();
         tickCollision();
         tickStamina();
-        animationController.tick(player, stateManager.getCurrentState(), movementMode, attackDirection, blockController.getCurrentDirection());
+        animationController.tick(player, stateManager.getCurrentState(), movementMode, attackDirection, blockController.getCurrentDirection(), couchLanceController.getState());
     }
 
     /**

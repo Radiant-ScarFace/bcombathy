@@ -47,5 +47,30 @@ public enum AnimationState {
     PERFECT_BLOCK,
     PARRY,
     CHAMBER_PREPARE,
-    CHAMBER_SUCCESS
+    CHAMBER_SUCCESS,
+
+    /**
+     * Couch Lance sub-states, layered on top of whatever generic/combat
+     * state {@link AnimationController} would otherwise resolve to —
+     * see {@link AnimationController#resolveTargetState} for the
+     * priority this takes over ordinary locomotion/attack states while
+     * {@code CouchLanceController} reports anything other than {@code
+     * INACTIVE}. Mirrors {@code CouchState}'s own flow but stays a
+     * distinct enum for the same reason {@code CouchState} itself is
+     * kept separate from {@code CombatState} — see that class's docs.
+     */
+    COUCH_PREPARE,
+    COUCH_ACTIVE,
+    COUCH_IMPACT,
+    COUCH_RECOVERY,
+
+    /**
+     * Brief, purely client-side reactive pose layered over whatever the
+     * combatant is otherwise doing when they take a hit that doesn't
+     * otherwise trigger a defensive state (Perfect Block/Parry) — see
+     * the client-only {@code HitReactionManager}. Not driven by {@link
+     * AnimationController#resolveTargetState}; applied as a short-lived
+     * overlay by the renderer directly.
+     */
+    HIT_REACT
 }

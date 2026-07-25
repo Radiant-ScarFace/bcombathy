@@ -18,6 +18,7 @@ import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.fabricmc.fabric.api.networking.v1.PacketByteBufs;
 
 import net.minecraft.client.MinecraftClient;
+import net.minecraft.entity.Entity;
 import net.minecraft.entity.LivingEntity;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.network.PacketByteBuf;
@@ -90,6 +91,17 @@ public final class ClientCombatNetworking {
         for (PlayerEntity p : client.world.getPlayers()) {
             if (p.getUuid().equals(id)) {
                 return p;
+            }
+        }
+        // Falls through to every other loaded entity so an AI-controlled
+        // combatant's synced snapshot resolves to its client-side mirror
+        // too, now that ServerCombatNetworking broadcasts for AI subjects
+        // as well as players - see that class's docs. Checked last since
+        // it's the most expensive lookup and the overwhelming majority of
+        // incoming snapshots describe a player.
+        for (Entity entity : client.world.getEntities()) {
+            if (entity instanceof LivingEntity living && living.getUuid().equals(id)) {
+                return living;
             }
         }
         return null;

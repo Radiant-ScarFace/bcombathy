@@ -2,6 +2,7 @@ package com.bcombat.combat.animation;
 
 import com.bcombat.combat.attack.AttackDirection;
 import com.bcombat.combat.block.GuardDirection;
+import com.bcombat.combat.couch.CouchState;
 import com.bcombat.combat.movement.MovementMode;
 import com.bcombat.combat.state.CombatState;
 import com.bcombat.combat.util.CombatConstants;
@@ -27,12 +28,44 @@ public final class AnimationController {
      * player physics, and advances the blend. Must be called once per tick.
      */
     public void tick(LivingEntity player, CombatState combatState, MovementMode movementMode, AttackDirection attackDirection, GuardDirection guardDirection) {
-        AnimationState target = resolveTargetState(player, combatState, movementMode, attackDirection, guardDirection);
+        tick(player, combatState, movementMode, attackDirection, guardDirection, CouchState.INACTIVE);
+    }
+
+    /**
+     * Overload that also folds in the rider's {@link CouchState}, giving
+     * a braced/couched lance its own dedicated poses instead of falling
+     * through to the generic mounted locomotion/attack states — see
+     * {@link #couchStateFor}. Everything else behaves exactly like the
+     * five-argument {@link #tick} overload.
+     */
+    public void tick(LivingEntity player, CombatState combatState, MovementMode movementMode, AttackDirection attackDirection, GuardDirection guardDirection, CouchState couchState) {
+        AnimationState target = couchState != CouchState.INACTIVE
+                ? couchStateFor(couchState)
+                : resolveTargetState(player, combatState, movementMode, attackDirection, guardDirection);
         int blendDuration = isDefensiveReactionState(target)
                 ? CombatConstants.DEFENSE_ANIMATION_BLEND_DURATION_TICKS
                 : CombatConstants.ANIMATION_BLEND_DURATION_TICKS;
         blender.setTargetState(target, blendDuration);
         blender.tick();
+    }
+
+    /**
+     * Maps a non-{@code INACTIVE} {@link CouchState} to its dedicated
+     * animation pose. {@code INTERRUPTED}/{@code CANCELLED} both fold
+     * into {@link AnimationState#COUCH_RECOVERY} since — exactly like
+     * {@code CouchLanceController} itself documents — both are
+     * momentary states that always advance into {@code RECOVERY} the
+     * very next tick, so no dedicated pose is worth a full blend into
+     * and back out of.
+     */
+    private static AnimationState couchStateFor(CouchState couchState) {
+        return switch (couchState) {
+            case PREPARING -> AnimationState.COUCH_PREPARE;
+            case ACTIVE -> AnimationState.COUCH_ACTIVE;
+            case IMPACT -> AnimationState.COUCH_IMPACT;
+            case INTERRUPTED, CANCELLED, RECOVERY -> AnimationState.COUCH_RECOVERY;
+            case INACTIVE -> AnimationState.COMBAT_IDLE;
+        };
     }
 
     /**
