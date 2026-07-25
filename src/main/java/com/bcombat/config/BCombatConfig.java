@@ -218,6 +218,21 @@ public final class BCombatConfig {
         CombatConstants.COUCH_REQUIRE_DRY_TERRAIN = d.couchRequireDryTerrain;
         CombatConstants.COUCH_AI_ENGAGE_DISTANCE = d.couchAiEngageDistance;
         CombatConstants.COUCH_AI_COUCH_CHANCE = d.couchAiCouchChance;
+
+        CombatConstants.GROUP_AI_ENABLED = d.groupAiEnabled;
+        CombatConstants.SQUAD_AWARENESS_RADIUS = d.squadAwarenessRadius;
+        CombatConstants.SQUAD_MIN_ALLY_SPACING = d.squadMinAllySpacing;
+        CombatConstants.SQUAD_FLANK_RADIUS_RATIO = d.squadFlankRadiusRatio;
+        CombatConstants.SQUAD_TARGET_SWITCH_MARGIN = d.squadTargetSwitchMargin;
+        CombatConstants.SQUAD_TARGET_SWITCH_COOLDOWN_TICKS = d.squadTargetSwitchCooldownTicks;
+        CombatConstants.SQUAD_THREAT_WEIGHT_PROXIMITY = d.squadThreatWeightProximity;
+        CombatConstants.SQUAD_THREAT_WEIGHT_LOW_HEALTH = d.squadThreatWeightLowHealth;
+        CombatConstants.SQUAD_THREAT_WEIGHT_ACTIVE_THREAT = d.squadThreatWeightActiveThreat;
+        CombatConstants.SQUAD_LOW_HEALTH_RETREAT_RATIO = d.squadLowHealthRetreatRatio;
+        CombatConstants.SQUAD_REGROUP_HEALTHY_RATIO = d.squadRegroupHealthyRatio;
+        CombatConstants.SQUAD_FRIENDLY_FIRE_CONE_COS = d.squadFriendlyFireConeCos;
+        CombatConstants.SQUAD_MOUNTED_CHARGE_DANGER_RADIUS = d.squadMountedChargeDangerRadius;
+        CombatConstants.AI_REACTION_JITTER_TICKS = d.aiReactionJitterTicks;
     }
 
     private static BCombatConfigData captureFromConstants() {
@@ -302,6 +317,21 @@ public final class BCombatConfig {
         d.couchRequireDryTerrain = CombatConstants.COUCH_REQUIRE_DRY_TERRAIN;
         d.couchAiEngageDistance = CombatConstants.COUCH_AI_ENGAGE_DISTANCE;
         d.couchAiCouchChance = CombatConstants.COUCH_AI_COUCH_CHANCE;
+
+        d.groupAiEnabled = CombatConstants.GROUP_AI_ENABLED;
+        d.squadAwarenessRadius = CombatConstants.SQUAD_AWARENESS_RADIUS;
+        d.squadMinAllySpacing = CombatConstants.SQUAD_MIN_ALLY_SPACING;
+        d.squadFlankRadiusRatio = CombatConstants.SQUAD_FLANK_RADIUS_RATIO;
+        d.squadTargetSwitchMargin = CombatConstants.SQUAD_TARGET_SWITCH_MARGIN;
+        d.squadTargetSwitchCooldownTicks = CombatConstants.SQUAD_TARGET_SWITCH_COOLDOWN_TICKS;
+        d.squadThreatWeightProximity = CombatConstants.SQUAD_THREAT_WEIGHT_PROXIMITY;
+        d.squadThreatWeightLowHealth = CombatConstants.SQUAD_THREAT_WEIGHT_LOW_HEALTH;
+        d.squadThreatWeightActiveThreat = CombatConstants.SQUAD_THREAT_WEIGHT_ACTIVE_THREAT;
+        d.squadLowHealthRetreatRatio = CombatConstants.SQUAD_LOW_HEALTH_RETREAT_RATIO;
+        d.squadRegroupHealthyRatio = CombatConstants.SQUAD_REGROUP_HEALTHY_RATIO;
+        d.squadFriendlyFireConeCos = CombatConstants.SQUAD_FRIENDLY_FIRE_CONE_COS;
+        d.squadMountedChargeDangerRadius = CombatConstants.SQUAD_MOUNTED_CHARGE_DANGER_RADIUS;
+        d.aiReactionJitterTicks = CombatConstants.AI_REACTION_JITTER_TICKS;
 
         return d;
     }

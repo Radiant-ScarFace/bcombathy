@@ -623,4 +623,91 @@ public final class CombatConstants {
 
     /** Per-decision probability a couch-eligible mounted AI actually commits to charging rather than fighting normally. */
     public static double COUCH_AI_COUCH_CHANCE = 0.5;
+
+    // ------------------------------------------------------------------
+    // Group AI / Squad Tactics (Advanced AI Behaviors & Group Combat
+    // Framework). Every field below is read by {@code
+    // com.bcombat.combat.ai.group.CombatSquad}/{@code SquadManager} and
+    // by {@code AICombatController}'s group-tactics integration only -
+    // none of it is read by, or changes the behavior of, the solo
+    // AI Combat Framework, {@code CombatController}, or any player-facing
+    // system. Per-role and per-difficulty multipliers themselves remain
+    // hardcoded enum constants on {@code CombatRole}/{@code
+    // AIDifficultyPreset} (same convention those two already use); only
+    // the global thresholds/radii/weights shared by every role and
+    // difficulty live here, exactly like {@link #COUCH_AI_ENGAGE_DISTANCE}
+    // and {@link #COUCH_AI_COUCH_CHANCE} already do for mounted AI.
+    // ------------------------------------------------------------------
+
+    /** Global on/off switch for group/squad tactics. When false, every AI-controlled combatant behaves exactly as the solo AI Combat Framework always has. */
+    public static boolean GROUP_AI_ENABLED = true;
+
+    /**
+     * Radius, in blocks, within which another squad member counts as
+     * "nearby" for shared combat awareness, spacing, and friendly-fire
+     * checks - the group-tactics analogue of {@code
+     * AIDifficultyPreset#engagementRange()}.
+     */
+    public static double SQUAD_AWARENESS_RADIUS = 16.0;
+
+    /** Minimum distance, in blocks, a squad member tries to keep from any other squad member while holding a flank/surround position. */
+    public static double SQUAD_MIN_ALLY_SPACING = 2.25;
+
+    /** Multiplier applied to a member's own ideal fighting distance to get the radius squad flank/surround slots are placed at around the focus target. */
+    public static double SQUAD_FLANK_RADIUS_RATIO = 1.05;
+
+    /**
+     * Fractional score margin (e.g. 0.20 = 20%) a candidate threat must
+     * exceed the squad's current focus target's score by before {@code
+     * com.bcombat.combat.ai.group.CombatSquad} switches focus to it -
+     * prevents rapid thrashing between near-equal threats.
+     */
+    public static double SQUAD_TARGET_SWITCH_MARGIN = 0.20;
+
+    /** Minimum ticks between one squad-wide target switch and the next. */
+    public static int SQUAD_TARGET_SWITCH_COOLDOWN_TICKS = 40;
+
+    /** Threat-score weight for inverse distance (closer candidates score higher). */
+    public static double SQUAD_THREAT_WEIGHT_PROXIMITY = 3.0;
+
+    /** Threat-score weight for a candidate's missing health fraction (finishing a wounded enemy scores higher). */
+    public static double SQUAD_THREAT_WEIGHT_LOW_HEALTH = 2.0;
+
+    /** Threat-score weight added for a candidate that is currently mid-wind-up/mid-swing against any squad member. */
+    public static double SQUAD_THREAT_WEIGHT_ACTIVE_THREAT = 4.0;
+
+    /**
+     * Own health ratio (0-1), before {@code CombatRole#retreatReluctance()}
+     * is applied, below which an AI-controlled combatant treats itself as
+     * critically wounded and prioritizes retreating over any offensive
+     * action - independent of, and stacked alongside, the existing
+     * stamina-based retreat trigger in {@code AICombatController}.
+     */
+    public static double SQUAD_LOW_HEALTH_RETREAT_RATIO = 0.30;
+
+    /** Own health ratio (0-1) above which a retreating squad member still counts as "healthy" when the squad computes its regroup point. */
+    public static double SQUAD_REGROUP_HEALTHY_RATIO = 0.50;
+
+    /**
+     * Minimum dot product (of the normalized attacker-to-ally and
+     * attacker-to-target vectors) for an ally standing roughly between an
+     * AI-controlled attacker and its target to be treated as a
+     * friendly-fire risk and suppress that tick's attack initiation. 1.0
+     * would require the ally to be exactly on the line; lower values
+     * widen the cone that counts as "in the way".
+     */
+    public static double SQUAD_FRIENDLY_FIRE_CONE_COS = 0.92;
+
+    /** Radius, in blocks, an unmounted squad member tries to stay clear of a nearby mounted ally that is actively charging, to avoid being run down. */
+    public static double SQUAD_MOUNTED_CHARGE_DANGER_RADIUS = 4.0;
+
+    /**
+     * Extra 0..N random ticks added on top of {@code
+     * AIDifficultyPreset#reactionDelayTicks()} for group-tactics
+     * decisions specifically (squad target adoption, retreat/regroup
+     * commitment) so a whole squad reacting to the same event doesn't
+     * visibly do so in perfect lockstep. Purely a randomness knob - does
+     * not affect solo (non-squad) AI decision timing.
+     */
+    public static int AI_REACTION_JITTER_TICKS = 4;
 }

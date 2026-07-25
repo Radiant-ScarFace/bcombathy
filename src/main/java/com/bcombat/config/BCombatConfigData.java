@@ -113,4 +113,20 @@ public final class BCombatConfigData {
     public boolean couchRequireDryTerrain = CombatConstants.COUCH_REQUIRE_DRY_TERRAIN;
     public double couchAiEngageDistance = CombatConstants.COUCH_AI_ENGAGE_DISTANCE;
     public double couchAiCouchChance = CombatConstants.COUCH_AI_COUCH_CHANCE;
+
+    // ---------------- Group AI / Squad tactics ----------------
+    public boolean groupAiEnabled = CombatConstants.GROUP_AI_ENABLED;
+    public double squadAwarenessRadius = CombatConstants.SQUAD_AWARENESS_RADIUS;
+    public double squadMinAllySpacing = CombatConstants.SQUAD_MIN_ALLY_SPACING;
+    public double squadFlankRadiusRatio = CombatConstants.SQUAD_FLANK_RADIUS_RATIO;
+    public double squadTargetSwitchMargin = CombatConstants.SQUAD_TARGET_SWITCH_MARGIN;
+    public int squadTargetSwitchCooldownTicks = CombatConstants.SQUAD_TARGET_SWITCH_COOLDOWN_TICKS;
+    public double squadThreatWeightProximity = CombatConstants.SQUAD_THREAT_WEIGHT_PROXIMITY;
+    public double squadThreatWeightLowHealth = CombatConstants.SQUAD_THREAT_WEIGHT_LOW_HEALTH;
+    public double squadThreatWeightActiveThreat = CombatConstants.SQUAD_THREAT_WEIGHT_ACTIVE_THREAT;
+    public double squadLowHealthRetreatRatio = CombatConstants.SQUAD_LOW_HEALTH_RETREAT_RATIO;
+    public double squadRegroupHealthyRatio = CombatConstants.SQUAD_REGROUP_HEALTHY_RATIO;
+    public double squadFriendlyFireConeCos = CombatConstants.SQUAD_FRIENDLY_FIRE_CONE_COS;
+    public double squadMountedChargeDangerRadius = CombatConstants.SQUAD_MOUNTED_CHARGE_DANGER_RADIUS;
+    public int aiReactionJitterTicks = CombatConstants.AI_REACTION_JITTER_TICKS;
 }

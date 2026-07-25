@@ -2,10 +2,14 @@ package com.bcombat.combat.ai;
 
 import com.bcombat.combat.attack.AttackDirection;
 import com.bcombat.combat.block.GuardDirection;
+import com.bcombat.combat.ai.group.CombatSquad;
+import com.bcombat.combat.ai.group.SquadManager;
+import com.bcombat.combat.ai.group.WeaponTactics;
 import com.bcombat.combat.controller.CombatController;
 import com.bcombat.combat.controller.CombatControllerManager;
 import com.bcombat.combat.defense.DirectionCompatibility;
 import com.bcombat.combat.state.CombatState;
+import com.bcombat.combat.util.CombatConstants;
 import com.bcombat.combat.weapon.WeaponProperties;
 import net.minecraft.entity.LivingEntity;
 import net.minecraft.entity.mob.MobEntity;
