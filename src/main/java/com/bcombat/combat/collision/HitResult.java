@@ -4,7 +4,6 @@ import com.bcombat.combat.attack.AttackDirection;
 import com.bcombat.combat.defense.DefenseResult;
 import com.bcombat.combat.weapon.WeaponProperties;
 import net.minecraft.entity.LivingEntity;
-import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.item.Item;
 
 /**
@@ -40,7 +39,7 @@ import net.minecraft.item.Item;
  *                          listeners that need an absolute timestamp rather than a relative one.
  */
 public record HitResult(
-        PlayerEntity attacker,
+        LivingEntity attacker,
         LivingEntity target,
         Item weaponItem,
         WeaponProperties weaponProperties,
@@ -53,7 +52,7 @@ public record HitResult(
         long worldTime) {
 
     /** Builds the result for a confirmed, unblocked hit. */
-    public static HitResult hit(PlayerEntity attacker, LivingEntity target, Item weaponItem,
+    public static HitResult hit(LivingEntity attacker, LivingEntity target, Item weaponItem,
                                 WeaponProperties weaponProperties, AttackDirection direction,
                                 HitLocation hitLocation, int ticksIntoAttack, long worldTime) {
         return new HitResult(attacker, target, weaponItem, weaponProperties, direction,
@@ -61,7 +60,7 @@ public record HitResult(
     }
 
     /** Builds the result for an attack that connected geometrically but was intercepted by a defense. */
-    public static HitResult blocked(PlayerEntity attacker, LivingEntity target, Item weaponItem,
+    public static HitResult blocked(LivingEntity attacker, LivingEntity target, Item weaponItem,
                                     WeaponProperties weaponProperties, AttackDirection direction,
                                     DefenseResult defenseResult, int ticksIntoAttack, long worldTime) {
         return new HitResult(attacker, target, weaponItem, weaponProperties, direction,
@@ -69,7 +68,7 @@ public record HitResult(
     }
 
     /** Builds the result for a swing that found no valid target within its collision window. */
-    public static HitResult miss(PlayerEntity attacker, Item weaponItem, WeaponProperties weaponProperties,
+    public static HitResult miss(LivingEntity attacker, Item weaponItem, WeaponProperties weaponProperties,
                                  AttackDirection direction, int ticksIntoAttack, long worldTime) {
         return new HitResult(attacker, null, weaponItem, weaponProperties, direction,
                 false, false, DefenseResult.NONE, HitLocation.UNKNOWN, ticksIntoAttack, worldTime);

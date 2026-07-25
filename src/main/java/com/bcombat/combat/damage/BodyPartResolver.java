@@ -3,7 +3,6 @@ package com.bcombat.combat.damage;
 import com.bcombat.combat.collision.HitLocation;
 import com.bcombat.combat.collision.HitResult;
 import net.minecraft.entity.LivingEntity;
-import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.util.math.Vec3d;
 
 /**
@@ -50,7 +49,7 @@ public final class BodyPartResolver {
      * @return the resolved {@link BodyPart} for a hit already classified
      * as {@code location} by the collision framework.
      */
-    public static BodyPart resolve(PlayerEntity attacker, LivingEntity target, HitLocation location) {
+    public static BodyPart resolve(LivingEntity attacker, LivingEntity target, HitLocation location) {
         if (attacker == null || target == null || location == null) {
             return BodyPart.UNKNOWN;
         }
@@ -73,7 +72,7 @@ public final class BodyPartResolver {
      * matters, since it's used purely to split one lateral band into
      * two independently-configurable {@link BodyPart}s.
      */
-    private static boolean isRightSide(PlayerEntity attacker, LivingEntity target) {
+    private static boolean isRightSide(LivingEntity attacker, LivingEntity target) {
         Vec3d lookVec = attacker.getRotationVec(1.0f);
         Vec3d lookHorizontal = new Vec3d(lookVec.x, 0.0, lookVec.z);
         if (lookHorizontal.lengthSquared() < 1.0E-6) {

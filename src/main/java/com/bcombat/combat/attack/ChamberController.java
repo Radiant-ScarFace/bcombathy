@@ -1,7 +1,7 @@
 package com.bcombat.combat.attack;
 
 import com.bcombat.combat.defense.IncomingAttack;
-import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.entity.LivingEntity;
 
 /**
  * The dedicated per-player controller for a single in-progress chamber
@@ -20,7 +20,7 @@ import net.minecraft.entity.player.PlayerEntity;
  */
 public final class ChamberController {
 
-    private PlayerEntity pendingAttacker;
+    private LivingEntity pendingAttacker;
     private AttackDirection pendingDirection = AttackDirection.NONE;
     private boolean pendingTimingSuccess;
     private boolean active;
@@ -59,7 +59,7 @@ public final class ChamberController {
         return pendingTimingSuccess;
     }
 
-    public PlayerEntity getPendingAttacker() {
+    public LivingEntity getPendingAttacker() {
         return pendingAttacker;
     }
 

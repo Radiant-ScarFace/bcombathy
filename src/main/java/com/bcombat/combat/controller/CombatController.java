@@ -61,17 +61,24 @@ import java.util.UUID;
 import java.util.Objects;
 
 /**
- * The single per-player entry point for the combat framework. Every future
- * system (weapons, damage, stamina, AI, networking) should interact with a
- * player's combat state exclusively through this class rather than reaching
- * into {@link CombatStateManager}, {@link MovementModifierManager}, or
- * {@link AnimationController} directly.
+ * The single per-combatant entry point for the combat framework. Every
+ * future system (weapons, damage, stamina, AI, networking) should
+ * interact with a combatant's combat state exclusively through this
+ * class rather than reaching into {@link CombatStateManager}, {@link
+ * MovementModifierManager}, or {@link AnimationController} directly.
  * <p>
- * One instance exists per player, owned by {@link CombatControllerManager}.
+ * Widened to {@link LivingEntity} (rather than {@link PlayerEntity})
+ * so a single implementation drives both real players and AI-controlled
+ * mobs through the exact same state machine, timing, collision, and
+ * damage pipeline — see {@code com.bcombat.combat.ai.AICombatController}
+ * for the AI decision layer that sits on top of this class and calls the
+ * same public API {@code CombatInputHandler} does for a human player.
+ * <p>
+ * One instance exists per combatant, owned by {@link CombatControllerManager}.
  */
 public final class CombatController {
 
-    private final PlayerEntity player;
+    private final LivingEntity player;
 
     /**
      * True only for the single server-side instance that owns this
@@ -131,7 +138,7 @@ public final class CombatController {
      */
     private UUID lastHandledAttackId;
 
-    public CombatController(PlayerEntity player, boolean authoritative) {
+    public CombatController(LivingEntity player, boolean authoritative) {
         this.player = player;
         this.authoritative = authoritative;
         this.stateManager.setOnTransition(this::onStateTransition);
@@ -142,9 +149,25 @@ public final class CombatController {
         return authoritative;
     }
 
-    /** @return the player entity this controller drives. */
-    public PlayerEntity getPlayer() {
+    /** @return the combatant (player or AI-controlled mob) this controller drives. */
+    public LivingEntity getEntity() {
         return player;
+    }
+
+    /**
+     * @return the combatant as a {@link PlayerEntity}, or {@code null} if
+     * this controller drives an AI-controlled mob instead. Convenience
+     * for call sites that only make sense for a real player (HUD,
+     * client-side prediction, networking) — prefer {@link #getEntity()}
+     * for anything that should also work for AI.
+     */
+    public PlayerEntity getPlayer() {
+        return player instanceof PlayerEntity p ? p : null;
+    }
+
+    /** @return true if this controller drives a real player rather than an AI-controlled mob. */
+    public boolean isPlayer() {
+        return player instanceof PlayerEntity;
     }
 
     // ------------------------------------------------------------------
@@ -653,7 +676,7 @@ public final class CombatController {
      */
     private void resolveChamberOutcome() {
         boolean success = chamberController.wasTimingSuccessful();
-        PlayerEntity attacker = chamberController.getPendingAttacker();
+        LivingEntity attacker = chamberController.getPendingAttacker();
         AttackDirection direction = chamberController.getPendingDirection();
         chamberController.reset();
 
@@ -669,15 +692,22 @@ public final class CombatController {
     /**
      * Turns one attack's resolved {@link CollisionOutcome} into the
      * appropriate event(s). A found target does not automatically mean a
-     * confirmed hit: if it's a {@link PlayerEntity} currently able to
-     * defend, this reuses {@link #notifyIncomingAttack} exactly the way
-     * a real hit-detection system is documented to — with the collision
-     * itself as the instant of impact ({@code ticksUntilImpact == 0}) —
-     * so Perfect Block/Parry/Chamber intercept this attack the same way
+     * confirmed hit: if the target already has a tracked {@link
+     * CombatController} — a real player, or an AI-controlled combatant
+     * driven by {@code com.bcombat.combat.ai.AICombatController} — this
+     * reuses {@link #notifyIncomingAttack} exactly the way a real
+     * hit-detection system is documented to — with the collision itself
+     * as the instant of impact ({@code ticksUntilImpact == 0}) — so
+     * Perfect Block/Parry/Chamber intercept this attack the same way
      * they already intercept {@code DefenseTestSimulator}'s simulated
-     * ones. A successful interception fires {@link AttackBlockedEvent}
-     * and skips {@link AttackHitEvent} entirely, per the requirement
-     * that a blocked attack never also confirms as a hit.
+     * ones, regardless of whether the defender is a player or AI. A
+     * plain vanilla mob with no tracked controller is never given one
+     * just to be hit — {@link CombatControllerManager#getIfPresent} is
+     * used here rather than {@link CombatControllerManager#get} so this
+     * lookup can never itself create one. A successful interception
+     * fires {@link AttackBlockedEvent} and skips {@link AttackHitEvent}
+     * entirely, per the requirement that a blocked attack never also
+     * confirms as a hit.
      */
     private void resolveCollisionOutcome(CollisionOutcome outcome) {
         Item weaponItem = weaponController.getCurrentItem();
@@ -694,8 +724,8 @@ public final class CombatController {
         CombatEvents.COLLISION_DETECTED.invoker()
                 .onCollisionDetected(new CollisionDetectedEvent(player, target, attackDirection, weaponItem));
 
-        if (target instanceof PlayerEntity targetPlayer) {
-            CombatController defenderController = CombatControllerManager.get(targetPlayer);
+        CombatController defenderController = CombatControllerManager.getIfPresent(target);
+        if (defenderController != null) {
             DefenseResult defenseResult = defenderController.notifyIncomingAttack(new IncomingAttack(player, attackDirection, 0));
             if (defenseResult != DefenseResult.NONE) {
                 HitResult result = HitResult.blocked(player, target, weaponItem, weapon, attackDirection, defenseResult, outcome.ticksIntoAttack(), worldTime);
