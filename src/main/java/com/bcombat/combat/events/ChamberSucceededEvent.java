@@ -1,7 +1,7 @@
 package com.bcombat.combat.events;
 
 import com.bcombat.combat.attack.AttackDirection;
-import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.entity.LivingEntity;
 
 /**
  * Fired the instant a chamber attempt resolves successfully (state
@@ -11,5 +11,5 @@ import net.minecraft.entity.player.PlayerEntity;
  * event with an extension point for a future counter-attack phase to
  * hook into.
  */
-public record ChamberSucceededEvent(PlayerEntity defender, PlayerEntity attacker, AttackDirection direction) {
+public record ChamberSucceededEvent(LivingEntity defender, LivingEntity attacker, AttackDirection direction) {
 }

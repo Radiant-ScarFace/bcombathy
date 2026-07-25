@@ -1,6 +1,6 @@
 package com.bcombat.combat.events;
 
-import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.entity.LivingEntity;
 
 /**
  * Fired the instant a player's stamina regenerates back up to its
@@ -10,5 +10,5 @@ import net.minecraft.entity.player.PlayerEntity;
  * convenience-event relationship {@link StaminaDepletedEvent} has to
  * {@link StaminaChangedEvent}.
  */
-public record StaminaRegeneratedEvent(PlayerEntity player) {
+public record StaminaRegeneratedEvent(LivingEntity player) {
 }

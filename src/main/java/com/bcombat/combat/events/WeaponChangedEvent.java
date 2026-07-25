@@ -1,7 +1,7 @@
 package com.bcombat.combat.events;
 
 import com.bcombat.combat.weapon.WeaponProperties;
-import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.entity.LivingEntity;
 import net.minecraft.item.Item;
 
 /**
@@ -24,7 +24,7 @@ import net.minecraft.item.Item;
  *                        newItem} is {@code null} or unregistered.
  */
 public record WeaponChangedEvent(
-        PlayerEntity player,
+        LivingEntity player,
         Item previousItem,
         WeaponProperties previousWeapon,
         Item newItem,

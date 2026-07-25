@@ -1,6 +1,6 @@
 package com.bcombat.combat.events;
 
-import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.entity.LivingEntity;
 
 /**
  * Fired the instant a player's stamina is consumed down to exactly zero.
@@ -9,5 +9,5 @@ import net.minecraft.entity.player.PlayerEntity;
  * only cares about "stamina hit zero" (e.g. a sound cue) doesn't need to
  * subscribe to the broader exhaustion-state event.
  */
-public record StaminaDepletedEvent(PlayerEntity player) {
+public record StaminaDepletedEvent(LivingEntity player) {
 }

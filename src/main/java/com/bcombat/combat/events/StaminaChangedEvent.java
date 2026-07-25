@@ -1,6 +1,6 @@
 package com.bcombat.combat.events;
 
-import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.entity.LivingEntity;
 
 /**
  * Fired whenever a player's current stamina value actually changes,
@@ -11,5 +11,5 @@ import net.minecraft.entity.player.PlayerEntity;
  * {@link ExhaustionStartedEvent}, and {@link ExhaustionEndedEvent} are all
  * convenience events fired alongside this one for specific thresholds.
  */
-public record StaminaChangedEvent(PlayerEntity player, double previousStamina, double currentStamina, double maxStamina) {
+public record StaminaChangedEvent(LivingEntity player, double previousStamina, double currentStamina, double maxStamina) {
 }

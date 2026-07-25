@@ -1,7 +1,7 @@
 package com.bcombat.combat.events;
 
 import com.bcombat.combat.attack.AttackDirection;
-import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.entity.LivingEntity;
 
 /**
  * Fired whenever the player's committed {@link AttackDirection} changes
@@ -11,6 +11,6 @@ import net.minecraft.entity.player.PlayerEntity;
  * a future feint system can also listen here to detect direction
  * fake-outs.
  */
-public record AttackDirectionChangedEvent(PlayerEntity player, AttackDirection previousDirection,
+public record AttackDirectionChangedEvent(LivingEntity player, AttackDirection previousDirection,
                                            AttackDirection currentDirection) {
 }

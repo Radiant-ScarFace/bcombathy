@@ -1,7 +1,7 @@
 package com.bcombat.combat.events;
 
 import com.bcombat.combat.weapon.WeaponProperties;
-import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.entity.LivingEntity;
 import net.minecraft.item.Item;
 
 /**
@@ -16,5 +16,5 @@ import net.minecraft.item.Item;
  *               this event does not fire when the hand was already empty.
  * @param weapon the combat stats {@code item} resolved to while it was held.
  */
-public record WeaponUnequippedEvent(PlayerEntity player, Item item, WeaponProperties weapon) {
+public record WeaponUnequippedEvent(LivingEntity player, Item item, WeaponProperties weapon) {
 }

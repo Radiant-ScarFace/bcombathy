@@ -3,6 +3,9 @@ package com.bcombat;
 import com.bcombat.combat.damage.DamageService;
 import com.bcombat.combat.damage.DefaultArmorRegistrations;
 import com.bcombat.combat.weapon.DefaultWeaponRegistrations;
+import com.bcombat.command.BCombatCommand;
+import com.bcombat.server.ServerCombatLifecycleHandler;
+import com.bcombat.server.ServerCombatTickHandler;
 
 import net.fabricmc.api.ModInitializer;
 
@@ -45,6 +48,27 @@ public class BannerlordCombat implements ModInitializer {
 		// keeps damage calculation fully decoupled from collision
 		// detection.
 		DamageService.register();
+
+		// Drives every tracked server-side CombatController (players and
+		// AI-enabled mobs alike) once per server tick, after first
+		// letting AICombatManager make this tick's AI decisions - see
+		// ServerCombatTickHandler's class docs for the full ordering
+		// rationale. This is the server-side analogue of the client's
+		// CombatInputHandler#onClientTick.
+		ServerCombatTickHandler.register();
+
+		// Creates and destroys CombatController/AICombatController
+		// instances at every point in their lifecycle - player join/
+		// disconnect/respawn, AI-mob death/unload, and full registry
+		// clears on server shutdown - so the tick loop above never ticks
+		// a stale or missing controller. See its class docs for exactly
+		// which event owns which slice of that lifecycle.
+		ServerCombatLifecycleHandler.register();
+
+		// Registers the /bcombat ai debug command tree (enable/disable/
+		// difficulty/list) - the operator-facing control surface for
+		// AICombatManager. See BCombatCommand's class docs.
+		BCombatCommand.register();
 
 		LOGGER.info("Hello Fabric world!");
 	}

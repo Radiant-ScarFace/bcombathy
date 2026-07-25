@@ -2,7 +2,7 @@ package com.bcombat.combat.events;
 
 import com.bcombat.combat.attack.AttackDirection;
 import com.bcombat.combat.block.GuardDirection;
-import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.entity.LivingEntity;
 
 /**
  * Fired the instant a Parry is confirmed: a Perfect Block that also fell
@@ -15,6 +15,6 @@ import net.minecraft.entity.player.PlayerEntity;
  * yet — interrupting the attacker's animation and any future stagger/
  * stamina effects are extension points for future phases to hook here.
  */
-public record ParryEvent(PlayerEntity defender, PlayerEntity attacker,
+public record ParryEvent(LivingEntity defender, LivingEntity attacker,
                          GuardDirection guardDirection, AttackDirection attackDirection) {
 }

@@ -2,7 +2,7 @@ package com.bcombat.combat.events;
 
 import com.bcombat.combat.attack.AttackDirection;
 import com.bcombat.combat.block.GuardDirection;
-import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.entity.LivingEntity;
 
 /**
  * Fired the instant a Perfect Block is confirmed: the defender's locked
@@ -17,6 +17,6 @@ import net.minecraft.entity.player.PlayerEntity;
  * for future phases; this event exists now purely so those systems have
  * a stable hook to subscribe to.
  */
-public record PerfectBlockEvent(PlayerEntity defender, PlayerEntity attacker,
+public record PerfectBlockEvent(LivingEntity defender, LivingEntity attacker,
                                 GuardDirection guardDirection, AttackDirection attackDirection) {
 }

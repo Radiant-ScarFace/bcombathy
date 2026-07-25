@@ -1,6 +1,6 @@
 package com.bcombat.combat.events;
 
-import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.entity.LivingEntity;
 
 /**
  * Fired the moment a player enters {@code CombatState.RECOVERY} after an
@@ -8,5 +8,5 @@ import net.minecraft.entity.player.PlayerEntity;
  * observe recovery duration without touching {@link
  * com.bcombat.combat.controller.CombatController} directly.
  */
-public record AttackRecoveryStartedEvent(PlayerEntity player) {
+public record AttackRecoveryStartedEvent(LivingEntity player) {
 }

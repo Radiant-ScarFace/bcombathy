@@ -1,7 +1,7 @@
 package com.bcombat.combat.events;
 
 import com.bcombat.combat.block.GuardDirection;
-import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.entity.LivingEntity;
 
 /**
  * Fired whenever the player's locked {@link GuardDirection} changes while
@@ -11,6 +11,6 @@ import net.minecraft.entity.player.PlayerEntity;
  * which guard pose is shown; a future chamber-block or parry system can
  * also listen here to detect a deliberate guard switch.
  */
-public record GuardDirectionChangedEvent(PlayerEntity player, GuardDirection previousDirection,
+public record GuardDirectionChangedEvent(LivingEntity player, GuardDirection previousDirection,
                                          GuardDirection currentDirection) {
 }

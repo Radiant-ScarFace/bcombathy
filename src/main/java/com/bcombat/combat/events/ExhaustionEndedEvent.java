@@ -1,6 +1,6 @@
 package com.bcombat.combat.events;
 
-import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.entity.LivingEntity;
 
 /**
  * Fired the instant a player automatically leaves {@code
@@ -9,5 +9,5 @@ import net.minecraft.entity.player.PlayerEntity;
  * and blocks may be freely initiated again from this point on, and the
  * exhaustion movement penalty is removed.
  */
-public record ExhaustionEndedEvent(PlayerEntity player) {
+public record ExhaustionEndedEvent(LivingEntity player) {
 }

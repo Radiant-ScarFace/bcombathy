@@ -1,7 +1,7 @@
 package com.bcombat.combat.events;
 
 import com.bcombat.combat.state.CombatState;
-import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.entity.LivingEntity;
 
 /**
  * Fired every time {@code CombatStateManager} successfully applies a
@@ -9,5 +9,5 @@ import net.minecraft.entity.player.PlayerEntity;
  * {@link CombatEnterEvent} and {@link CombatExitEvent} are convenience
  * events fired alongside this one for the specific NORMAL/combat boundary.
  */
-public record CombatStateChangedEvent(PlayerEntity player, CombatState previousState, CombatState currentState) {
+public record CombatStateChangedEvent(LivingEntity player, CombatState previousState, CombatState currentState) {
 }

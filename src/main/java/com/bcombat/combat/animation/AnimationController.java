@@ -5,7 +5,7 @@ import com.bcombat.combat.block.GuardDirection;
 import com.bcombat.combat.movement.MovementMode;
 import com.bcombat.combat.state.CombatState;
 import com.bcombat.combat.util.CombatConstants;
-import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.entity.LivingEntity;
 
 /**
  * Determines which {@link AnimationState} a player should be playing based
@@ -26,7 +26,7 @@ public final class AnimationController {
      * Recomputes the target animation state from current combat state and
      * player physics, and advances the blend. Must be called once per tick.
      */
-    public void tick(PlayerEntity player, CombatState combatState, MovementMode movementMode, AttackDirection attackDirection, GuardDirection guardDirection) {
+    public void tick(LivingEntity player, CombatState combatState, MovementMode movementMode, AttackDirection attackDirection, GuardDirection guardDirection) {
         AnimationState target = resolveTargetState(player, combatState, movementMode, attackDirection, guardDirection);
         int blendDuration = isDefensiveReactionState(target)
                 ? CombatConstants.DEFENSE_ANIMATION_BLEND_DURATION_TICKS
@@ -48,7 +48,7 @@ public final class AnimationController {
                 || state == AnimationState.CHAMBER_SUCCESS;
     }
 
-    private AnimationState resolveTargetState(PlayerEntity player, CombatState combatState, MovementMode movementMode, AttackDirection attackDirection, GuardDirection guardDirection) {
+    private AnimationState resolveTargetState(LivingEntity player, CombatState combatState, MovementMode movementMode, AttackDirection attackDirection, GuardDirection guardDirection) {
         if (combatState == CombatState.ENTERING_COMBAT) {
             return AnimationState.ENTER_COMBAT;
         }
@@ -146,7 +146,7 @@ public final class AnimationController {
         };
     }
 
-    private static double horizontalSpeed(PlayerEntity player) {
+    private static double horizontalSpeed(LivingEntity player) {
         double dx = player.getVelocity().x;
         double dz = player.getVelocity().z;
         return Math.sqrt(dx * dx + dz * dz);

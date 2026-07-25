@@ -1,7 +1,7 @@
 package com.bcombat.combat.events;
 
 import com.bcombat.combat.weapon.WeaponProperties;
-import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.entity.LivingEntity;
 import net.minecraft.item.Item;
 
 /**
@@ -19,5 +19,5 @@ import net.minecraft.item.Item;
  * @param weapon the resolved combat stats for {@code item}, i.e. {@code
  *               WeaponRegistry.resolve(item)} at the moment of equipping.
  */
-public record WeaponEquippedEvent(PlayerEntity player, Item item, WeaponProperties weapon) {
+public record WeaponEquippedEvent(LivingEntity player, Item item, WeaponProperties weapon) {
 }

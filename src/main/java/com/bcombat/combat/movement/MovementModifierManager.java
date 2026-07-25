@@ -5,7 +5,7 @@ import net.minecraft.entity.attribute.EntityAttributeInstance;
 import net.minecraft.entity.attribute.EntityAttributeModifier;
 import net.minecraft.entity.attribute.EntityAttributeModifier.Operation;
 import net.minecraft.entity.attribute.EntityAttributes;
-import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.entity.LivingEntity;
 import net.minecraft.util.Identifier;
 
 import java.util.UUID;
@@ -48,7 +48,7 @@ public final class MovementModifierManager {
      * Adds the base combat-mode walk speed penalty. Safe to call repeatedly;
      * it will not double-apply.
      */
-    public void enableCombatMovement(PlayerEntity player) {
+    public void enableCombatMovement(LivingEntity player) {
         EntityAttributeInstance speedAttribute = getSpeedAttribute(player);
         if (speedAttribute == null || combatModifierApplied) {
             return;
@@ -66,7 +66,7 @@ public final class MovementModifierManager {
     /**
      * Removes all combat-mode movement modifiers. Safe to call repeatedly.
      */
-    public void disableCombatMovement(PlayerEntity player) {
+    public void disableCombatMovement(LivingEntity player) {
         EntityAttributeInstance speedAttribute = getSpeedAttribute(player);
         if (speedAttribute != null) {
             speedAttribute.removeModifier(WALK_MODIFIER_UUID);
@@ -87,7 +87,7 @@ public final class MovementModifierManager {
      * Intended to be called by {@link com.bcombat.combat.controller.CombatController}
      * on entering {@code PREPARING_ATTACK}.
      */
-    public void enableWindUpPenalty(PlayerEntity player) {
+    public void enableWindUpPenalty(LivingEntity player) {
         EntityAttributeInstance speedAttribute = getSpeedAttribute(player);
         if (speedAttribute == null || windUpModifierApplied) {
             return;
@@ -108,7 +108,7 @@ public final class MovementModifierManager {
      * the moment {@code PREPARING_ATTACK} is left for any reason (release,
      * cancel, or forced exit) so the penalty never outlives the wind-up.
      */
-    public void disableWindUpPenalty(PlayerEntity player) {
+    public void disableWindUpPenalty(LivingEntity player) {
         EntityAttributeInstance speedAttribute = getSpeedAttribute(player);
         if (speedAttribute != null) {
             speedAttribute.removeModifier(WIND_UP_MODIFIER_UUID);
@@ -124,7 +124,7 @@ public final class MovementModifierManager {
      * com.bcombat.combat.controller.CombatController} the instant
      * exhaustion begins.
      */
-    public void enableExhaustionPenalty(PlayerEntity player) {
+    public void enableExhaustionPenalty(LivingEntity player) {
         EntityAttributeInstance speedAttribute = getSpeedAttribute(player);
         if (speedAttribute == null || exhaustionModifierApplied) {
             return;
@@ -145,7 +145,7 @@ public final class MovementModifierManager {
      * Intended to be called the instant exhaustion ends for any reason
      * (sufficient stamina regenerated, or Combat Mode itself exited).
      */
-    public void disableExhaustionPenalty(PlayerEntity player) {
+    public void disableExhaustionPenalty(LivingEntity player) {
         EntityAttributeInstance speedAttribute = getSpeedAttribute(player);
         if (speedAttribute != null) {
             speedAttribute.removeModifier(EXHAUSTION_MODIFIER_UUID);
@@ -158,7 +158,7 @@ public final class MovementModifierManager {
      * tracks the player's actual sprint state (strafing/turning remain
      * smooth and unaffected — only sprint speed is additionally reduced).
      */
-    public void tick(PlayerEntity player) {
+    public void tick(LivingEntity player) {
         if (!combatModifierApplied) {
             return;
         }
@@ -184,7 +184,7 @@ public final class MovementModifierManager {
         }
     }
 
-    private static EntityAttributeInstance getSpeedAttribute(PlayerEntity player) {
+    private static EntityAttributeInstance getSpeedAttribute(LivingEntity player) {
         return player.getAttributeInstance(EntityAttributes.GENERIC_MOVEMENT_SPEED);
     }
 }

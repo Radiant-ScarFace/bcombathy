@@ -1,6 +1,6 @@
 package com.bcombat.combat.events;
 
-import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.entity.LivingEntity;
 
 /**
  * Fired when a player enters {@code CombatState.PREPARING_ATTACK}.
@@ -9,5 +9,5 @@ import net.minecraft.entity.player.PlayerEntity;
  * system can be built as a pure listener with no changes to this
  * framework.
  */
-public record AttackPreparationStartedEvent(PlayerEntity player) {
+public record AttackPreparationStartedEvent(LivingEntity player) {
 }

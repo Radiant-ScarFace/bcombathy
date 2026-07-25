@@ -1,6 +1,6 @@
 package com.bcombat.combat.events;
 
-import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.entity.LivingEntity;
 
 /**
  * Fired the instant a player enters {@code ExhaustionState#EXHAUSTED}
@@ -10,5 +10,5 @@ import net.minecraft.entity.player.PlayerEntity;
  * additional movement speed penalty. Basic (non-combat) movement remains
  * available throughout.
  */
-public record ExhaustionStartedEvent(PlayerEntity player) {
+public record ExhaustionStartedEvent(LivingEntity player) {
 }
