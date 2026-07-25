@@ -1,5 +1,7 @@
 package com.bcombat;
 
+import com.bcombat.combat.damage.DamageService;
+import com.bcombat.combat.damage.DefaultArmorRegistrations;
 import com.bcombat.combat.weapon.DefaultWeaponRegistrations;
 
 import net.fabricmc.api.ModInitializer;
@@ -30,6 +32,19 @@ public class BannerlordCombat implements ModInitializer {
 		// once networking exists. See DefaultWeaponRegistrations' javadoc
 		// for why these are placeholder/example stats, not balancing.
 		DefaultWeaponRegistrations.register();
+
+		// Registers the example vanilla-item armor mappings so the armor
+		// framework (ArmorRegistry/ArmorResolver) is exercisable in-game,
+		// the same way DefaultWeaponRegistrations does for weapons. See
+		// its javadoc for why these are example stats, not balancing.
+		DefaultArmorRegistrations.register();
+
+		// Wires the damage & armor framework into combat by subscribing
+		// to the existing AttackHitEvent - see DamageService's class
+		// docs for why this is the entire integration point and why it
+		// keeps damage calculation fully decoupled from collision
+		// detection.
+		DamageService.register();
 
 		LOGGER.info("Hello Fabric world!");
 	}

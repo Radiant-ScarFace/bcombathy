@@ -200,6 +200,46 @@ public final class CombatEvents {
                         }
                     });
 
+    public static final Event<DamageCalculatedCallback> DAMAGE_CALCULATED =
+            EventFactory.createArrayBacked(DamageCalculatedCallback.class,
+                    callbacks -> event -> {
+                        for (DamageCalculatedCallback callback : callbacks) {
+                            callback.onDamageCalculated(event);
+                        }
+                    });
+
+    public static final Event<ArmorReducedDamageCallback> ARMOR_REDUCED_DAMAGE =
+            EventFactory.createArrayBacked(ArmorReducedDamageCallback.class,
+                    callbacks -> event -> {
+                        for (ArmorReducedDamageCallback callback : callbacks) {
+                            callback.onArmorReducedDamage(event);
+                        }
+                    });
+
+    public static final Event<CriticalHitCallback> CRITICAL_HIT =
+            EventFactory.createArrayBacked(CriticalHitCallback.class,
+                    callbacks -> event -> {
+                        for (CriticalHitCallback callback : callbacks) {
+                            callback.onCriticalHit(event);
+                        }
+                    });
+
+    public static final Event<DamageAppliedCallback> DAMAGE_APPLIED =
+            EventFactory.createArrayBacked(DamageAppliedCallback.class,
+                    callbacks -> event -> {
+                        for (DamageAppliedCallback callback : callbacks) {
+                            callback.onDamageApplied(event);
+                        }
+                    });
+
+    public static final Event<StaggerTriggeredCallback> STAGGER_TRIGGERED =
+            EventFactory.createArrayBacked(StaggerTriggeredCallback.class,
+                    callbacks -> event -> {
+                        for (StaggerTriggeredCallback callback : callbacks) {
+                            callback.onStaggerTriggered(event);
+                        }
+                    });
+
     @FunctionalInterface
     public interface CombatEnterCallback {
         void onCombatEnter(CombatEnterEvent event);
@@ -313,5 +353,30 @@ public final class CombatEvents {
     @FunctionalInterface
     public interface AttackBlockedCallback {
         void onAttackBlocked(AttackBlockedEvent event);
+    }
+
+    @FunctionalInterface
+    public interface DamageCalculatedCallback {
+        void onDamageCalculated(DamageCalculatedEvent event);
+    }
+
+    @FunctionalInterface
+    public interface ArmorReducedDamageCallback {
+        void onArmorReducedDamage(ArmorReducedDamageEvent event);
+    }
+
+    @FunctionalInterface
+    public interface CriticalHitCallback {
+        void onCriticalHit(CriticalHitEvent event);
+    }
+
+    @FunctionalInterface
+    public interface DamageAppliedCallback {
+        void onDamageApplied(DamageAppliedEvent event);
+    }
+
+    @FunctionalInterface
+    public interface StaggerTriggeredCallback {
+        void onStaggerTriggered(StaggerTriggeredEvent event);
     }
 }

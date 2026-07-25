@@ -22,10 +22,20 @@ import java.util.Set;
  * default and future properties can be added without breaking existing
  * call sites.
  * <p>
- * Nothing here models damage, collision, or hit detection — those are
- * explicitly out of scope for this framework. {@link #reach()} and the
- * reserved {@link #staminaModifier()} exist purely as data for a future
- * hit-detection/stamina phase to read; this class does not act on them.
+ * Nothing here models collision or hit detection — those stay out of
+ * scope for this framework. {@link #reach()} exists purely as data for
+ * the collision system to read; this class does not act on it.
+ * <p>
+ * {@link #baseDamage()}, {@link #cutDamage()}, {@link #pierceDamage()},
+ * and {@link #bluntDamage()} are the sole source of a weapon's damage
+ * output for the damage framework (see {@code
+ * com.bcombat.combat.damage.DamageCalculator}) — nothing in that
+ * framework hardcodes a damage value; it only ever reads these four
+ * properties plus body/armor modifiers. A weapon is free to leave any
+ * of the three typed components at its default of {@code 0.0} (e.g. a
+ * pure slashing sword needs no {@link #bluntDamage()}) since {@link
+ * #baseDamage()} alone already guarantees every weapon deals some
+ * damage.
  */
 public final class WeaponProperties {
 
@@ -40,6 +50,10 @@ public final class WeaponProperties {
     private final double recoveryModifier;
     private final double windUpModifier;
     private final double staminaModifier;
+    private final double baseDamage;
+    private final double cutDamage;
+    private final double pierceDamage;
+    private final double bluntDamage;
     private final Set<GuardDirection> supportedGuardDirections;
     private final Set<AttackDirection> supportedAttackDirections;
 
@@ -53,6 +67,10 @@ public final class WeaponProperties {
         this.recoveryModifier = builder.recoveryModifier;
         this.windUpModifier = builder.windUpModifier;
         this.staminaModifier = builder.staminaModifier;
+        this.baseDamage = builder.baseDamage;
+        this.cutDamage = builder.cutDamage;
+        this.pierceDamage = builder.pierceDamage;
+        this.bluntDamage = builder.bluntDamage;
         this.supportedGuardDirections = Collections.unmodifiableSet(EnumSet.copyOf(builder.supportedGuardDirections));
         this.supportedAttackDirections = Collections.unmodifiableSet(EnumSet.copyOf(builder.supportedAttackDirections));
     }
@@ -134,6 +152,32 @@ public final class WeaponProperties {
         return staminaModifier;
     }
 
+    /**
+     * Flat baseline damage this weapon deals on every confirmed hit,
+     * independent of {@link #cutDamage()}/{@link #pierceDamage()}/
+     * {@link #bluntDamage()}. Guarantees every registered weapon (and
+     * unarmed strikes) deal at least some damage even if every typed
+     * component is left at its default of {@code 0.0}.
+     */
+    public double baseDamage() {
+        return baseDamage;
+    }
+
+    /** Slashing damage component. Reduced by a target's cut resistance; see the damage framework. */
+    public double cutDamage() {
+        return cutDamage;
+    }
+
+    /** Piercing/thrust damage component. Reduced by a target's pierce resistance; see the damage framework. */
+    public double pierceDamage() {
+        return pierceDamage;
+    }
+
+    /** Blunt/impact damage component. Reduced by a target's blunt resistance; see the damage framework. */
+    public double bluntDamage() {
+        return bluntDamage;
+    }
+
     public Set<GuardDirection> supportedGuardDirections() {
         return supportedGuardDirections;
     }
@@ -161,6 +205,10 @@ public final class WeaponProperties {
                 + ", recoveryModifier=" + recoveryModifier
                 + ", windUpModifier=" + windUpModifier
                 + ", staminaModifier=" + staminaModifier
+                + ", baseDamage=" + baseDamage
+                + ", cutDamage=" + cutDamage
+                + ", pierceDamage=" + pierceDamage
+                + ", bluntDamage=" + bluntDamage
                 + '}';
     }
 
@@ -181,6 +229,10 @@ public final class WeaponProperties {
         private double recoveryModifier = 1.0;
         private double windUpModifier = 1.0;
         private double staminaModifier = 1.0;
+        private double baseDamage = 1.0;
+        private double cutDamage = 0.0;
+        private double pierceDamage = 0.0;
+        private double bluntDamage = 0.0;
         private Set<GuardDirection> supportedGuardDirections = EnumSet.of(
                 GuardDirection.LEFT_GUARD, GuardDirection.RIGHT_GUARD, GuardDirection.UP_GUARD, GuardDirection.THRUST_GUARD);
         private Set<AttackDirection> supportedAttackDirections = EnumSet.of(
@@ -227,6 +279,30 @@ public final class WeaponProperties {
 
         public Builder staminaModifier(double staminaModifier) {
             this.staminaModifier = staminaModifier;
+            return this;
+        }
+
+        /** @see WeaponProperties#baseDamage() */
+        public Builder baseDamage(double baseDamage) {
+            this.baseDamage = baseDamage;
+            return this;
+        }
+
+        /** @see WeaponProperties#cutDamage() */
+        public Builder cutDamage(double cutDamage) {
+            this.cutDamage = cutDamage;
+            return this;
+        }
+
+        /** @see WeaponProperties#pierceDamage() */
+        public Builder pierceDamage(double pierceDamage) {
+            this.pierceDamage = pierceDamage;
+            return this;
+        }
+
+        /** @see WeaponProperties#bluntDamage() */
+        public Builder bluntDamage(double bluntDamage) {
+            this.bluntDamage = bluntDamage;
             return this;
         }
 
