@@ -3,6 +3,7 @@ package com.bcombat.command;
 import com.bcombat.combat.ai.AICombatController;
 import com.bcombat.combat.ai.AICombatManager;
 import com.bcombat.combat.ai.AIDifficultyPreset;
+import com.bcombat.combat.ai.CombatRole;
 import com.bcombat.combat.controller.CombatController;
 import com.bcombat.combat.controller.CombatControllerManager;
 import com.bcombat.config.BCombatConfig;
@@ -67,6 +68,13 @@ public final class BCombatCommand {
                     builder
             );
 
+    /** Tab-completion for the optional {@code role} argument on {@code /bcombat ai enable}, mirroring {@link #DIFFICULTY_SUGGESTIONS}. */
+    private static final SuggestionProvider<ServerCommandSource> ROLE_SUGGESTIONS = (context, builder) ->
+            CommandSource.suggestMatching(
+                    Arrays.stream(CombatRole.values()).map(role -> role.name().toLowerCase(Locale.ROOT)),
+                    builder
+            );
+
     private BCombatCommand() {
         // Static registrar, no instances.
     }
@@ -85,10 +93,16 @@ public final class BCombatCommand {
                 .then(CommandManager.literal("ai")
                         .then(CommandManager.literal("enable")
                                 .then(CommandManager.argument("targets", EntityArgumentType.entities())
-                                        .executes(ctx -> enable(ctx, AIDifficultyPreset.NORMAL))
+                                        .executes(ctx -> enable(ctx, AIDifficultyPreset.NORMAL, null, null))
                                         .then(CommandManager.argument("difficulty", StringArgumentType.word())
                                                 .suggests(DIFFICULTY_SUGGESTIONS)
-                                                .executes(ctx -> enable(ctx, parseDifficulty(ctx))))))
+                                                .executes(ctx -> enable(ctx, parseDifficulty(ctx), null, null))
+                                                .then(CommandManager.argument("role", StringArgumentType.word())
+                                                        .suggests(ROLE_SUGGESTIONS)
+                                                        .executes(ctx -> enable(ctx, parseDifficulty(ctx), parseRole(ctx), null))
+                                                        .then(CommandManager.argument("squad", StringArgumentType.word())
+                                                                .executes(ctx -> enable(ctx, parseDifficulty(ctx), parseRole(ctx),
+                                                                        StringArgumentType.getString(ctx, "squad"))))))))
                         .then(CommandManager.literal("disable")
                                 .then(CommandManager.argument("targets", EntityArgumentType.entities())
                                         .executes(BCombatCommand::disable)))
@@ -155,21 +169,41 @@ public final class BCombatCommand {
     // enable
     // ------------------------------------------------------------------
 
-    private static int enable(CommandContext<ServerCommandSource> ctx, AIDifficultyPreset difficulty) throws CommandSyntaxException {
+    /**
+     * {@code /bcombat ai enable <targets> [difficulty] [role] [squad]} —
+     * a {@code null} {@code squadId} (the two/three-argument command
+     * forms) enables plain solo AI combat via {@link
+     * AICombatManager#enable(MobEntity, AIDifficultyPreset)}, exactly as
+     * before. Supplying a squad name additionally opts every targeted
+     * mob into that squad at the given (or default {@link
+     * CombatRole#AGGRESSOR}) role via {@link
+     * AICombatManager#enable(MobEntity, AIDifficultyPreset, CombatRole, String)}.
+     */
+    private static int enable(CommandContext<ServerCommandSource> ctx, AIDifficultyPreset difficulty,
+                              CombatRole role, String squadId) throws CommandSyntaxException {
         Collection<? extends Entity> targets = EntityArgumentType.getEntities(ctx, "targets");
+        boolean wantsSquad = squadId != null && !squadId.isBlank();
         int enabled = 0;
         for (Entity target : targets) {
             if (target instanceof MobEntity mob) {
-                AICombatManager.enable(mob, difficulty);
+                if (wantsSquad) {
+                    AICombatManager.enable(mob, difficulty, role, squadId);
+                } else {
+                    AICombatManager.enable(mob, difficulty);
+                }
                 enabled++;
             }
         }
 
         int skipped = targets.size() - enabled;
         int finalEnabled = enabled;
+        String roleSuffix = wantsSquad
+                ? " | role=" + (role != null ? role.name().toLowerCase(Locale.ROOT) : CombatRole.AGGRESSOR.name().toLowerCase(Locale.ROOT))
+                + " | squad=" + squadId
+                : "";
         ctx.getSource().sendFeedback(
                 () -> feedback("Enabled AI combat (" + difficulty.name().toLowerCase(Locale.ROOT) + ") on "
-                        + finalEnabled + " entit" + (finalEnabled == 1 ? "y" : "ies")
+                        + finalEnabled + " entit" + (finalEnabled == 1 ? "y" : "ies") + roleSuffix
                         + (skipped > 0 ? ", skipped " + skipped + " non-mob target" + (skipped == 1 ? "" : "s") : "")),
                 true);
         return enabled;
@@ -244,12 +278,16 @@ public final class BCombatCommand {
             String stamina = controller != null
                     ? Math.round(controller.getStaminaRatio() * 100) + "%"
                     : "?";
+            String squadSuffix = ai.getSquadId() != null
+                    ? " | role=" + ai.getRole().name().toLowerCase(Locale.ROOT) + " | squad=" + ai.getSquadId()
+                    : "";
             ctx.getSource().sendFeedback(() -> feedback(
                     " - " + mob.getType().getTranslationKey() + " @ " + formatPos(mob)
                             + " | difficulty=" + ai.getDifficulty().name().toLowerCase(Locale.ROOT)
                             + " | state=" + state
                             + " | stamina=" + stamina
                             + " | intent=" + ai.getTacticalIntent().name().toLowerCase(Locale.ROOT)
+                            + squadSuffix
             ), false);
         }
         return controllers.size();
@@ -267,6 +305,17 @@ public final class BCombatCommand {
             ctx.getSource().sendError(feedback("Unknown difficulty '" + raw + "', defaulting to NORMAL. Valid values: "
                     + Arrays.toString(AIDifficultyPreset.values())));
             return AIDifficultyPreset.NORMAL;
+        }
+    }
+
+    private static CombatRole parseRole(CommandContext<ServerCommandSource> ctx) {
+        String raw = StringArgumentType.getString(ctx, "role");
+        try {
+            return CombatRole.valueOf(raw.toUpperCase(Locale.ROOT));
+        } catch (IllegalArgumentException e) {
+            ctx.getSource().sendError(feedback("Unknown role '" + raw + "', defaulting to aggressor. Valid values: "
+                    + Arrays.toString(CombatRole.values())));
+            return CombatRole.AGGRESSOR;
         }
     }
 
